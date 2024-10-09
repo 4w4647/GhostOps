@@ -8,7 +8,7 @@
     "test": "nodemon ."
   },
   "bin": {
-    "ghostops": "GhostOps.js"
+    "GhostOps": "GhostOps.js"
   },
   "repository": {
     "type": "git",
