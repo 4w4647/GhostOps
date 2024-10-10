@@ -31,6 +31,18 @@ class GhostOps {
 `       );
     }
 
+    webIndex(req, res) {
+       res.sendFile(path.join(__dirname, "web", "views", "index.html"));
+    }
+
+    webLogin(req, res) {
+        res.sendFile(path.join(__dirname, "web", "views", "login.html"));
+    }
+
+    webPanel(req, res) {
+        res.sendFile(path.join(__dirname, "web", "views", "panel.html"));
+    }
+    
     init(host, port, sslc, sslk) {
         const app = express();
 
@@ -52,7 +64,7 @@ class GhostOps {
 
         app.use(sessionMgmt);
         app.use(express.json());
-        app.use(express.static(path.join(__dirname, "wgui", "static")));
+        app.use(express.static(path.join(__dirname, "web", "static")));
 
         app.use((err, req, res, next) => {
             res.status(500).json({ message: "Internal server error" });
@@ -60,8 +72,10 @@ class GhostOps {
 
         socktServer.engine.use(sessionMgmt);
 
-        app.get("/",      (req, res) => res.status(200).json({ message: "Hello World!" }));
-        
+        app.get("/",      (req, res) => this.webIndex(req, res));
+        app.get("/login", (req, res) => this.webLogin(req, res));
+        app.get("/panel", (req, res) => this.webPanel(req, res));
+
         httpsServer.on("error", (err) => {
             console.error(err.message);
         });
@@ -81,17 +95,17 @@ class GhostOps {
         const program = new Command();
         
         program
-            .name(this.metadt.name)
-            .description(this.metadt.description)
+        .name(this.metadt.name)
+        .description(this.metadt.description)
         
         program
-            .requiredOption("--host <host>", "IPv4 host or domain")
-            .requiredOption("--port <port>", "Port number 0-65535")
-            .requiredOption("--sslc <path>", "Path to SSL crt")
-            .requiredOption("--sslk <path>", "Path to SSL key")
-        
+        .requiredOption("--host <host>", "IPv4 host or domain")
+        .requiredOption("--port <port>", "Port number 0-65535")
+        .requiredOption("--sslc <path>", "Path to SSL crt")
+        .requiredOption("--sslk <path>", "Path to SSL key")
+
         program
-            .parse(process.argv);
+        .parse(process.argv);
         
         const args = program.opts();
 
