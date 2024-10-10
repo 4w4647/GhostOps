@@ -86,7 +86,7 @@ nav .hamburger {
 
     nav .hamburger {
         display: block;
-        font-size: 50px;
+        font-size: 25px;
         transition: all 0.3s ease-in-out;
     }
 
