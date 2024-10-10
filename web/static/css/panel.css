@@ -14,7 +14,7 @@ nav {
     justify-content: space-between;
     align-items: center;
     flex-direction: column;
-    padding: 0.5rem;
+    padding: 1rem;
     position: relative;
 }
 
@@ -53,6 +53,58 @@ nav ul li:hover {
     box-shadow: 0px 0px 5px var(--color-2);
 }
 
-@media screen and (max-width: 810px){
+nav #hamburger {
+    display: none;
+}
 
+nav .hamburger {
+    display: none;
+}
+
+@media screen and (max-width: 810px){
+    nav {
+        position: relative;
+        height: unset;
+        width: 100%;
+        justify-content: space-between;
+        flex-direction: unset;
+        gap: 0.5rem;
+    }
+
+    nav .logo {
+        width: 50px;
+    }
+
+    nav ul {
+        display: none;
+        box-shadow: 0px 0px 5px var(--color-5);
+    }
+    
+    nav ul li {
+        background-color: var(--color-4);
+    }
+
+    nav .hamburger {
+        display: block;
+        font-size: 50px;
+        transition: all 0.3s ease-in-out;
+    }
+
+    nav .hamburger:hover {
+        color: var(--color-2);
+        text-shadow: 0px 0px 5px var(--color-2);
+    }
+
+    nav #hamburger:checked + label {
+        color: var(--color-2);
+        text-shadow: 0px 0px 5px var(--color-2);
+    }
+
+    nav #hamburger:checked + label + ul {
+        position: absolute;
+        top: 130%;
+        right: 5%;
+        background-color: var(--color-3);
+        display: flex;
+    }
 }
