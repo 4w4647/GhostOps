@@ -32,15 +32,15 @@ class GhostOps {
     }
 
     webIndex(req, res) {
-       res.sendFile(path.join(__dirname, "web", "views", "index.html"));
+        res.sendFile(path.join(__dirname, "web", "pages", "index.html"));
     }
 
     webLogin(req, res) {
-        res.sendFile(path.join(__dirname, "web", "views", "login.html"));
+        res.sendFile(path.join(__dirname, "web", "pages", "login.html"));
     }
 
     webPanel(req, res) {
-        res.sendFile(path.join(__dirname, "web", "views", "panel.html"));
+        res.sendFile(path.join(__dirname, "web", "pages", "panel.html"));
     }
     
     init(host, port, sslc, sslk) {
