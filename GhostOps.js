@@ -32,15 +32,15 @@ class GhostOps {
     }
 
     webIndex(req, res) {
-        res.sendFile(path.join(__dirname, "web", "pages", "index.html"));
+        res.sendFile(path.join(__dirname, "web", "index.html"));
     }
 
     webLogin(req, res) {
-        res.sendFile(path.join(__dirname, "web", "pages", "login.html"));
+        res.sendFile(path.join(__dirname, "web", "login.html"));
     }
 
     webPanel(req, res) {
-        res.sendFile(path.join(__dirname, "web", "pages", "panel.html"));
+        res.sendFile(path.join(__dirname, "web", "panel.html"));
     }
     
     init(host, port, sslc, sslk) {
@@ -64,7 +64,7 @@ class GhostOps {
 
         app.use(sessionMgmt);
         app.use(express.json());
-        app.use(express.static(path.join(__dirname, "web", "static")));
+        app.use(express.static(path.join(__dirname, "web", "public")));
 
         app.use((err, req, res, next) => {
             res.status(500).json({ message: "Internal server error" });
