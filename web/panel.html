@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GhostOps - Panel</title>
+    <link rel="icon" href="/assets/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/panel.css">
     <link rel="stylesheet" href="/external/boxicons-2.1.4/css/boxicons.css">
@@ -17,40 +18,42 @@
                 <i class='hamburger bx bx-menu'></i>
             </label>
             <ul>
-                <li>
+                <li id="dashboard">
                     <i class='bx bxs-dashboard'></i>
                     <p>Dashboard</p>
                 </li>
-                <li>
+                <li id="agents">
                     <i class='bx bxs-ghost'></i>
                     <p>Agents</p>
                 </li>
-                <li>
+                <li id="listeners">
                     <i class='bx bx-broadcast'></i>
                     <p>Listeners</p>
                 </li>
-                <li>
+                <li id="worldmap">
                     <i class='bx bx-map'></i>
                     <p>World Map</p>
                 </li>
-                <li>
+                <li id="database">
                     <i class='bx bxs-data'></i>
                     <p>Database</p>
                 </li>
-                <li>
+                <li id="notifications">
                     <i class='bx bxs-bell'></i>
                     <p>Notifications</p>
                 </li>
-                <li>
+                <li id="settings">
                     <i class='bx bxs-cog'></i>
                     <p>Settings</p>
                 </li>
-                <li>
+                <li id="logout">
                     <i class='bx bxs-exit'></i>
                     <p>Logout</p>
                 </li>
             </ul>
-        </nav>    
+        </nav>
+        <div id="container" class="container">
+        </div>
     </div>
     <script src="/js/panel.js"></script>
 </body>
