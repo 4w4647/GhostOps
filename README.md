@@ -47,4 +47,4 @@ Contributions, feedback, and collaboration are welcome once the base architectur
 
 ## License
 
-A suitable license will be chosen when the project reaches a more stable version.
+BSD 3-Clause
