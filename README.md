@@ -36,7 +36,7 @@ ghostops/
 > Python 3.8+ is required. Use a virtual environment.
 
 ```bash
-git clone https://github.com/yourname/ghostops.git
+git clone https://github.com/4w4647/ghostops.git
 cd ghostops
 poetry install
 ```
