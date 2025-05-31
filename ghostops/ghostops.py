@@ -26,6 +26,10 @@ class GhostOps:
         self.modules = []
 
     def discover_modules(self):
+        """
+        Walks the modules directory to find all valid Python module files.
+        Returns a list of module import paths.
+        """
         for root, _, files in os.walk(self.BASE_DIR):
             for file in files:
                 if file.endswith(".py") and not file.startswith("__"):
@@ -39,9 +43,16 @@ class GhostOps:
 
     @staticmethod
     def snake_to_pascal(snake_str):
+        """
+        Converts a snake_case string to PascalCase.
+        """
         return "".join(word.capitalize() for word in snake_str.split("_"))
 
     def load_modules(self):
+        """
+        Imports all discovered modules and validates required metadata and class structure.
+        Returns a list of tuples (module_path, module_class).
+        """
         required_metadata = [
             "module_name",
             "module_description",
@@ -101,10 +112,17 @@ class GhostOps:
         return loaded
 
     def load(self):
+        """
+        Discover and load all modules.
+        """
         self.discover_modules()
         return self.load_modules()
 
     def list_modules(self, category_filter=None, os_filter=None, arch_filter=None):
+        """
+        Lists all modules optionally filtered by category, OS, or architecture.
+        Prints module info or logs a warning if none found.
+        """
         found = False
 
         for _, module_class in self.load():
@@ -123,13 +141,16 @@ class GhostOps:
                 continue
 
             found = True
-
             module_class.show_info()
 
         if not found:
             Logger.log("warn", "No modules matched the given filters.")
 
     def get_module_by_name(self, name: str):
+        """
+        Retrieve a module by its class name or filename (case insensitive).
+        Returns tuple (module_path, module_class) or (None, None) if not found.
+        """
         for mod_path, module_class in self.load():
             class_name = module_class.__name__.lower()
             file_name = mod_path.rsplit(".", 1)[-1].lower()

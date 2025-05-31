@@ -1,50 +1,131 @@
-# 👻 GhostOps - Command and Control Framework
+# 👻 GhostOps - Command & Control Framework
 
-**Status:** 🚧 *Under Development*
+**GhostOps** is a modular Command & Control (C2) framework for adversary simulation, red teaming, and offensive security operations. It is designed to be simple, extensible, and powerful — supporting multiple OS and architectures through clearly defined modules.
 
-## Overview
+---
 
-**GhostOps** is a modular and extensible Command and Control (C2) framework designed for advanced red team operations, penetration testing, and security research.
+## 📁 Project Structure
 
-> ⚠️ **Disclaimer:** This project is intended for **educational** and **authorized** security testing purposes only. Unauthorized use is strictly prohibited.
-
-## Features (Planned)
-
-- Secure and stealthy communication channels
-- Multi-platform implant support
-- Modular plugin architecture
-- Real-time operator dashboard
-- Built-in encryption and evasion techniques
-- Scriptable tasking and automation
-
-## Development Status
-
-This project is currently in its **early stages of development**. Most components are either in planning or prototyping. Expect frequent changes, incomplete features, and placeholder code.
-
-## Getting Started
-
-> 🚧 Initial setup instructions and usage guidelines will be added as development progresses.
-
-```bash
-sudo apt install python3-poetry -y
+```
+ghostops/
+├── core/
+│   ├── module_base.py
+│   └── utils.py
+├── ghostops.py
+├── modules/
+│   ├── evasion/
+│   ├── exploit/
+│   ├── handler/
+│   ├── payload/
+│   ├── postexp/
+│   ├── scanner/
+│   └── examples/
+│       └── hello_world.py  ← Example module
+├── LICENSE
+├── poetry.lock
+├── pyproject.toml
+└── README.md
 ```
 
-```bash
-git clone https://github.com/4w4647/GhostOps.git && cd GhostOps
-```
+---
+
+## 🚀 Getting Started
+
+### 📦 Installation
+
+> Python 3.8+ is required. Use a virtual environment.
 
 ```bash
+git clone https://github.com/yourname/ghostops.git
+cd ghostops
 poetry install
 ```
 
+### ▶️ Running a Module
+
 ```bash
-poetry run ghostops
+python ghostops.py --module examples/hello_world
 ```
 
-## Contributing
+---
 
-Contributions, feedback, and collaboration are welcome once the base architecture is in place. Stay tuned for contributor guidelines and issue templates.
+## 🧩 Writing Your Own Module
 
-## License
+Modules in GhostOps inherit from `BaseModule`, and must implement:
 
-BSD 3-Clause
+- Metadata: name, description, author, etc.
+- `add_arguments()` method for CLI arguments
+- `main()` method for logic
+
+---
+
+### ✅ Minimal Example — Hello World Module
+
+This is the simplest working module:
+
+```python
+# File: ghostops/modules/examples/hello_world.py
+
+from ghostops.core.module_base import BaseModule
+from ghostops.core.utils import Logger
+import argparse
+
+class HelloWorld(BaseModule):
+    module_name = "HelloWorld"
+    module_description = "Prints Hello, World! using Logger."
+    module_author = "Your Name <your@email.com>"
+    module_category = "examples"
+    module_target_os = ["windows", "linux"]
+    module_target_architecture = ["x86", "x64"]
+
+    @staticmethod
+    def add_arguments(parser: argparse.ArgumentParser):
+        pass  # No arguments needed for this simple example
+
+    @staticmethod
+    def main(args):
+        Logger.log("info", "Hello, World!")
+```
+
+---
+
+## 📂 Adding Your Module
+
+1. Choose the correct category folder (e.g., `payload`, `postexp`, etc.)
+2. Create your module Python file
+3. Inherit from `BaseModule`
+4. Define required metadata and logic
+5. Test it via the CLI
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome!
+
+### How to contribute:
+
+1. Fork the repo
+2. Create a new branch (`feature/my-new-module`)
+3. Add your module and test it
+4. Push your branch
+5. **Create a pull request targeting the `main` branch**
+
+---
+
+## 📜 License
+
+This project is licensed under the [BSD 3-Clause](LICENSE).
+
+---
+
+## ⚠️ Disclaimer
+
+GhostOps is intended **strictly for authorized use in red teaming, security research, and education**. Unauthorized or malicious use is strictly prohibited.
+
+---
+
+## 📫 Contact
+
+**Maintainer:** Awagat Dhungana  
+📧 [4w4647@gmail.com](mailto:4w4647@gmail.com)

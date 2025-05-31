@@ -14,24 +14,30 @@ class TcpPortScanner(BaseModule):
 
     @staticmethod
     def add_arguments(parser):
+        # Target hostname or IP address
         parser.add_argument(
             "--host", required=True, help="Target hostname or IP address"
         )
+        # Ports or port ranges to scan (e.g., 22,80,443 or 1-1024)
         parser.add_argument(
             "--port", required=True, help="Ports to scan (e.g. 22,80,443 or 1-1024)"
         )
+        # Number of concurrent threads for scanning
         parser.add_argument(
             "--threads", required=True, type=int, help="Number of concurrent threads"
         )
 
     @staticmethod
     def main(args):
+        # Log input parameters
         Logger.log("info", f"HOST     - {args.host}")
         Logger.log("info", f"PORT     - {args.port}")
         Logger.log("info", f"THREADS  - {args.threads}")
         print()
 
+        # Parse ports input string into a set of ports
         ports = TcpPortScanner.parse_ports(args.port)
+        # Perform TCP port scanning concurrently
         open_ports = TcpPortScanner.scan_tcp(args.host, ports, args.threads)
 
         if open_ports:
@@ -45,6 +51,7 @@ class TcpPortScanner(BaseModule):
 
     @staticmethod
     def parse_ports(port_str):
+        # Converts a port string to a set of integers supporting ranges and commas
         ports = set()
         for part in port_str.split(","):
             if "-" in part:
@@ -68,6 +75,7 @@ class TcpPortScanner(BaseModule):
                 Logger.log("flaw", f"TCP error on port {port}: {e}")
             return None
 
+        # Use thread pool to scan ports concurrently
         with ThreadPoolExecutor(max_workers=threads) as executor:
             futures = {executor.submit(scan, port): port for port in ports}
             for future in as_completed(futures):
