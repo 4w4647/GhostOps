@@ -18,9 +18,8 @@ ghostops/
 │   ├── handler/
 │   ├── payload/
 │   ├── postexp/
-│   ├── scanner/
-│   └── examples/
-│       └── hello_world.py  ← Example module
+│   └── scanner/
+│   
 ├── LICENSE
 ├── poetry.lock
 ├── pyproject.toml
@@ -44,7 +43,7 @@ poetry install
 ### ▶️ Running a Module
 
 ```bash
-python ghostops.py --module examples/hello_world
+poetry run ghostops module module_name
 ```
 
 ---
