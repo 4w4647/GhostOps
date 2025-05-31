@@ -6,12 +6,13 @@ init(autoreset=True)
 
 # Mapping of module categories to terminal colors
 CATEGORY_COLORS: dict[str, str] = {
-    "scanner": Fore.CYAN,
-    "payload": Fore.GREEN,
-    "exploit": Fore.RED,
-    "evasion": Fore.YELLOW,
-    "postexp": Fore.MAGENTA,
-    "handler": Fore.LIGHTBLUE_EX,
+    "scanner": Fore.CYAN,         # Cyan for scanner
+    "payload": Fore.GREEN,        # Green for payload
+    "exploit": Fore.RED,          # Red for exploit
+    "evasion": Fore.YELLOW,       # Yellow for evasion
+    "postexp": Fore.MAGENTA,      # Magenta for postexp
+    "handler": Fore.LIGHTBLUE_EX, # Light Blue for handler
+    "execute": Fore.LIGHTGREEN_EX, # Light Green for execute
 }
 
 
