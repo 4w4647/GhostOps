@@ -3,6 +3,7 @@
 **GhostOps** is a modular Command & Control (C2) framework for adversary simulation, red teaming, and offensive security operations. It is designed to be simple, extensible, and powerful — supporting multiple OS and architectures through clearly defined modules.
 
 ---
+![image](https://github.com/user-attachments/assets/be2b4052-d7fa-442e-b991-9a745352c4d3)
 
 ## 📁 Project Structure
 
