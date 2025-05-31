@@ -41,6 +41,12 @@ cd ghostops
 poetry install
 ```
 
+### ▶️ Listing Modules
+
+```bash
+poetry run ghostops list
+```
+
 ### ▶️ Running a Module
 
 ```bash
