@@ -6,18 +6,21 @@ from colorama import Style
 from ghostops.core.utils import get_category_color, Logger
 from ghostops.core.module_base import BaseModule
 
+
 class GhostOps:
     BASE_DIR = "ghostops/modules"
     PREFIX = "ghostops.modules"
 
     @staticmethod
     def print_banner():
-        print("""
+        print(
+            """
 ┏┓┓     ┏┓   
 ┃┓┣┓┏┓┏╋┃┃┏┓┏
 ┗┛┛┗┗┛┛┗┗┛┣┛┛
           ┛  
-""")
+"""
+        )
 
     def __init__(self):
         self.modules = []
@@ -26,7 +29,9 @@ class GhostOps:
         for root, _, files in os.walk(self.BASE_DIR):
             for file in files:
                 if file.endswith(".py") and not file.startswith("__"):
-                    rel_path = os.path.relpath(os.path.join(root, file), start=os.getcwd())
+                    rel_path = os.path.relpath(
+                        os.path.join(root, file), start=os.getcwd()
+                    )
                     mod_path = rel_path.replace(os.sep, ".").rsplit(".", 1)[0]
                     if mod_path.startswith(self.PREFIX):
                         self.modules.append(mod_path)
@@ -34,7 +39,7 @@ class GhostOps:
 
     @staticmethod
     def snake_to_pascal(snake_str):
-        return ''.join(word.capitalize() for word in snake_str.split('_'))
+        return "".join(word.capitalize() for word in snake_str.split("_"))
 
     def load_modules(self):
         required_metadata = [
@@ -43,35 +48,50 @@ class GhostOps:
             "module_author",
             "module_category",
             "module_target_os",
-            "module_target_architecture"
+            "module_target_architecture",
         ]
         loaded = []
 
         for mod in self.modules:
             try:
                 module = importlib.import_module(mod)
-                filename = mod.rsplit('.', 1)[-1]
+                filename = mod.rsplit(".", 1)[-1]
                 expected_classname = self.snake_to_pascal(filename)
 
                 classes = [
-                    cls for _, cls in inspect.getmembers(module, inspect.isclass)
+                    cls
+                    for _, cls in inspect.getmembers(module, inspect.isclass)
                     if cls.__module__ == mod and cls.__name__ == expected_classname
                 ]
 
                 if not classes:
-                    raise ImportError(f"Expected class '{expected_classname}' not found in module {mod}")
+                    raise ImportError(
+                        f"Expected class '{expected_classname}' not found in module {mod}"
+                    )
 
                 module_class = classes[0]
 
                 if not issubclass(module_class, BaseModule):
-                    raise ImportError(f"Class {module_class.__name__} must inherit from BaseModule")
+                    raise ImportError(
+                        f"Class {module_class.__name__} must inherit from BaseModule"
+                    )
 
-                missing = [field for field in required_metadata if not hasattr(module_class, field)]
+                missing = [
+                    field
+                    for field in required_metadata
+                    if not hasattr(module_class, field)
+                ]
                 if missing:
-                    raise ImportError(f"Class {module_class.__name__} missing metadata: {', '.join(missing)}")
+                    raise ImportError(
+                        f"Class {module_class.__name__} missing metadata: {', '.join(missing)}"
+                    )
 
-                if not hasattr(module_class, "main") or not callable(getattr(module_class, "main")):
-                    raise ImportError(f"Class {module_class.__name__} missing callable 'main' method")
+                if not hasattr(module_class, "main") or not callable(
+                    getattr(module_class, "main")
+                ):
+                    raise ImportError(
+                        f"Class {module_class.__name__} missing callable 'main' method"
+                    )
 
                 loaded.append((mod, module_class))
 
@@ -90,7 +110,10 @@ class GhostOps:
         for _, module_class in self.load():
             category = getattr(module_class, "module_category", "").lower()
             os_list = [o.lower() for o in getattr(module_class, "module_target_os", [])]
-            arch_list = [a.lower() for a in getattr(module_class, "module_target_architecture", [])]
+            arch_list = [
+                a.lower()
+                for a in getattr(module_class, "module_target_architecture", [])
+            ]
 
             if category_filter and category != category_filter.lower():
                 continue
@@ -118,7 +141,9 @@ class GhostOps:
 def main():
     GhostOps.print_banner()
 
-    parser = argparse.ArgumentParser(description="GhostOps - Command and Control Framework.")
+    parser = argparse.ArgumentParser(
+        description="GhostOps - Command and Control Framework."
+    )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     list_parser = subparsers.add_parser("list", help="List available modules")
@@ -126,9 +151,13 @@ def main():
     list_parser.add_argument("--os", type=str, help="Filter by target OS")
     list_parser.add_argument("--arch", type=str, help="Filter by architecture")
 
-    module_parser = subparsers.add_parser("module", help="Execute or inspect a specific module")
+    module_parser = subparsers.add_parser(
+        "module", help="Execute or inspect a specific module"
+    )
     module_parser.add_argument("module_name", help="Module class or filename")
-    module_parser.add_argument("module_args", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
+    module_parser.add_argument(
+        "module_args", nargs=argparse.REMAINDER, help=argparse.SUPPRESS
+    )
 
     args = parser.parse_args()
 
@@ -140,9 +169,7 @@ def main():
 
     if args.command == "list":
         ghostops.list_modules(
-            category_filter=args.category,
-            os_filter=args.os,
-            arch_filter=args.arch
+            category_filter=args.category, os_filter=args.os, arch_filter=args.arch
         )
         return
 
@@ -156,7 +183,9 @@ def main():
         module_class.show_info()
 
         module_arg_parser = argparse.ArgumentParser(prog=args.module_name)
-        if hasattr(module_class, "add_arguments") and callable(getattr(module_class, "add_arguments")):
+        if hasattr(module_class, "add_arguments") and callable(
+            getattr(module_class, "add_arguments")
+        ):
             module_class.add_arguments(module_arg_parser)
 
         if "--help" in args.module_args or "-h" in args.module_args:

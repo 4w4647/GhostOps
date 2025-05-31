@@ -3,6 +3,7 @@ from ghostops.core.module_base import BaseModule
 from ghostops.core.utils import Logger
 from pathlib import Path
 
+
 class LinuxX64ShellReverseTcp(BaseModule):
     module_name = "LinuxX86ReverseTcp"
     module_description = "Generates reverse TCP payload targeting Linux x64 platforms."
@@ -16,16 +17,19 @@ class LinuxX64ShellReverseTcp(BaseModule):
         parser.add_argument("--host", required=True, type=str, help="Target host")
         parser.add_argument("--port", required=True, type=int, help="Target port")
         parser.add_argument(
-            "--output", required=True, type=str, help="Output filename for raw shellcode (e.g., ghostops.bin)"
+            "--output",
+            required=True,
+            type=str,
+            help="Output filename for raw shellcode (e.g., ghostops.bin)",
         )
-    
+
     @staticmethod
     def host_to_hex(host: str) -> str:
         try:
-            octets = host.split('.')
+            octets = host.split(".")
             if len(octets) != 4:
                 raise ValueError("Invalid IPv4 address format")
-            return ''.join(f'{int(octet):02x}' for octet in reversed(octets))
+            return "".join(f"{int(octet):02x}" for octet in reversed(octets))
         except Exception as e:
             Logger.log("flaw", f"Invalid host '{host}': {e}")
             raise
@@ -34,7 +38,7 @@ class LinuxX64ShellReverseTcp(BaseModule):
     def port_to_hex(port: int) -> str:
         if not (0 < port < 65536):
             raise ValueError(f"Port number must be between 1 and 65535, got {port}")
-        return f'{port & 0xFF:02x}{(port >> 8) & 0xFF:02x}'
+        return f"{port & 0xFF:02x}{(port >> 8) & 0xFF:02x}"
 
     @staticmethod
     def main(args):

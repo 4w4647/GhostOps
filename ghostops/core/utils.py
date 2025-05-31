@@ -8,11 +8,13 @@ CATEGORY_COLORS: dict[str, str] = {
     "payload": Fore.GREEN,
     "exploit": Fore.RED,
     "evasion": Fore.YELLOW,
-    "postexp": Fore.MAGENTA
+    "postexp": Fore.MAGENTA,
 }
+
 
 def get_category_color(category: str) -> str:
     return CATEGORY_COLORS.get(category.lower(), Fore.RESET)
+
 
 class Logger:
     _LOG_TYPES: dict[str, dict[str, str]] = {
@@ -33,13 +35,17 @@ class Logger:
         config = Logger._LOG_TYPES[log_type]
         frame = config["frame"]
         color = config["color"]
-        time_str = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] " if timestamp else ""
+        time_str = (
+            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] " if timestamp else ""
+        )
 
         print(f"{time_str} {color}{frame}{Style.RESET_ALL} {message}")
 
+
 def host_to_hex(host):
-    return ''.join([f'{int(octet):02x}' for octet in host.split('.')][::-1])
+    return "".join([f"{int(octet):02x}" for octet in host.split(".")][::-1])
+
 
 def port_to_hex(port):
     port = int(port)
-    return f'{port & 0xFF:02x}{(port >> 8) & 0xFF:02x}'
+    return f"{port & 0xFF:02x}{(port >> 8) & 0xFF:02x}"

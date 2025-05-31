@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from ghostops.core.module_base import BaseModule
 from ghostops.core.utils import Logger
 
+
 class TcpPortScanner(BaseModule):
     module_name = "TcpPortScanner"
     module_description = "Scans open TCP ports using pure Python sockets."
@@ -13,9 +14,15 @@ class TcpPortScanner(BaseModule):
 
     @staticmethod
     def add_arguments(parser):
-        parser.add_argument("--host", required=True, help="Target hostname or IP address")
-        parser.add_argument("--port", required=True, help="Ports to scan (e.g. 22,80,443 or 1-1024)")
-        parser.add_argument("--threads", required=True, type=int, help="Number of concurrent threads")
+        parser.add_argument(
+            "--host", required=True, help="Target hostname or IP address"
+        )
+        parser.add_argument(
+            "--port", required=True, help="Ports to scan (e.g. 22,80,443 or 1-1024)"
+        )
+        parser.add_argument(
+            "--threads", required=True, type=int, help="Number of concurrent threads"
+        )
 
     @staticmethod
     def main(args):
@@ -39,9 +46,9 @@ class TcpPortScanner(BaseModule):
     @staticmethod
     def parse_ports(port_str):
         ports = set()
-        for part in port_str.split(','):
-            if '-' in part:
-                start, end = map(int, part.split('-'))
+        for part in port_str.split(","):
+            if "-" in part:
+                start, end = map(int, part.split("-"))
                 ports.update(range(start, end + 1))
             else:
                 ports.add(int(part))

