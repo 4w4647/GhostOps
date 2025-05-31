@@ -34,6 +34,9 @@ ghostops/
 ### 📦 Installation
 
 > Python 3.8+ is required. Use a virtual environment.
+```bash
+sudo apt install mingw-w64 -y
+```
 
 ```bash
 git clone https://github.com/4w4647/ghostops.git
