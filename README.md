@@ -27,7 +27,7 @@
 | | Language | Output | Role |
 |---|---|---|---|
 | `beacon/` | C (mingw) | `beacon.dll` | Windows implant |
-| `loader/` | C (mingw) | `loader.exe` | Drops and executes the beacon DLL |
+| `loader/` | C (mingw) | `loader.exe` | Executes the beacon DLL |
 | `server/` | Go | `server` | TLS C2 listener + operator API |
 | `client/` | Go | `client` | Operator REPL |
 
