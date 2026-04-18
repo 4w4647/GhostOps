@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -115,9 +116,12 @@ func (s *Store) save() {
 	}
 	data, err := json.Marshal(state)
 	if err != nil {
+		log.Printf("[store] marshal error: %v", err)
 		return
 	}
-	os.WriteFile(s.path, data, 0600)
+	if err := os.WriteFile(s.path, data, 0600); err != nil {
+		log.Printf("[store] write error: %v", err)
+	}
 }
 
 func newTaskID() string {

@@ -74,6 +74,11 @@ void beacon_exec_download(PARSED_TASK *task, TASK_RESULT *result) {
         snprintf(result->error, sizeof(result->error), "empty or unreadable file");
         return;
     }
+    if (fsize.QuadPart > (LONGLONG)0xFFFFFFFF) {
+        CloseHandle(hFile);
+        snprintf(result->error, sizeof(result->error), "file too large (>4 GB)");
+        return;
+    }
 
     DWORD raw_sz = (DWORD)fsize.QuadPart;
 

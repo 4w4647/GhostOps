@@ -26,10 +26,10 @@ static BOOL shell_alive(void) {
    *buf and *cap are updated if the buffer is reallocated.
    Returns total bytes written (buffer is NUL-terminated). */
 static DWORD shell_read_sentinel(char **buf, DWORD *cap, DWORD timeout_ms) {
-    DWORD total    = 0;
-    DWORD deadline = GetTickCount() + timeout_ms;
+    DWORD    total    = 0;
+    ULONGLONG deadline = GetTickCount64() + timeout_ms;
 
-    while (GetTickCount() < deadline) {
+    while (GetTickCount64() < deadline) {
         DWORD avail = 0;
         if (!PeekNamedPipe(g_hStdoutR, NULL, 0, NULL, &avail, NULL)) break;
         if (avail == 0) { Sleep(POLL_MS); continue; }

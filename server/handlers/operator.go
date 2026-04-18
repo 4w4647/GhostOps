@@ -65,6 +65,7 @@ func (h *Operator) Task(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 128<<20) // 128 MB (upload payloads)
 	var req struct {
 		BeaconID uint32 `json:"beacon_id"`
 		store.Task

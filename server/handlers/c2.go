@@ -28,6 +28,7 @@ func (h *C2) Checkin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB
 	var info store.BeaconInfo
 	if err := json.NewDecoder(r.Body).Decode(&info); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -68,6 +69,7 @@ func (h *C2) Result(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<20) // 64 MB
 	var result store.TaskResult
 	if err := json.NewDecoder(r.Body).Decode(&result); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)

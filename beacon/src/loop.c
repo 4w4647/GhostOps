@@ -17,7 +17,8 @@ DWORD WINAPI beacon_loop(LPVOID lpParam) {
             DWORD rand_val = 0;
             BCryptGenRandom(NULL, (PUCHAR)&rand_val, sizeof(rand_val),
                             BCRYPT_USE_SYSTEM_PREFERRED_RNG);
-            LONG delta  = (LONG)(rand_val % (jitter_ms * 2 + 1)) - (LONG)jitter_ms;
+            ULONGLONG range = (ULONGLONG)jitter_ms * 2 + 1;
+            LONG delta  = (LONG)(rand_val % range) - (LONG)jitter_ms;
             LONG result = (LONG)ctx.sleep_ms + delta;
             sleep_ms    = result > 0 ? (DWORD)result : 0;
         }
