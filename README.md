@@ -240,9 +240,3 @@ GhostOps Community is intentionally scoped. The following are not implemented:
 
 Detection by a mature EDR on a monitored network should be expected.
 Advanced capabilities are available in **GhostOps Pro**.
-
----
-
-## Author
-
-**4w4647** — built for the community. Use responsibly.
