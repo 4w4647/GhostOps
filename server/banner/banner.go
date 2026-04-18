@@ -5,14 +5,15 @@ import (
 )
 
 const logo = `
-┏┓┓     ┏┓   
+┏┓┓     ┏┓
 ┃┓┣┓┏┓┏╋┃┃┏┓┏
 ┗┛┛┗┗┛┛┗┗┛┣┛┛
           ┛  `
 
-func Print(c2Addr, opAddr string) {
+func Print(c2Addr, opAddr, apiKey string) {
 	fmt.Println(logo)
-	fmt.Printf("%s - %s\n", "HTTPListener", c2Addr)
-	fmt.Printf("%s - %s\n", "Operator API", opAddr)
+	fmt.Printf("  %-14s %s\n", "HTTPS Listener", c2Addr)
+	fmt.Printf("  %-14s %s\n", "Operator API", opAddr)
+	fmt.Printf("  %-14s %s\n", "API Key", apiKey)
 	fmt.Println()
 }

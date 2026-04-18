@@ -8,10 +8,16 @@ import (
 )
 
 func main() {
-	host := flag.String("host", "127.0.0.1", "Operator API host")
-	port := flag.Int("port", 9090, "Operator API port")
+	host   := flag.String("host", "127.0.0.1", "Operator API host")
+	port   := flag.Int("port", 9090, "Operator API port")
+	apiKey := flag.String("key", "", "Operator API key")
 	flag.Parse()
 
-	server := fmt.Sprintf("http://%s:%d", *host, *port)
-	repl.New(server).Run()
+	if *apiKey == "" {
+		fmt.Println("[-] -key is required")
+		return
+	}
+
+	server := fmt.Sprintf("https://%s:%d", *host, *port)
+	repl.New(server, *apiKey).Run()
 }
