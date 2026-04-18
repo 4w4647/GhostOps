@@ -1,7 +1,7 @@
 #include <beacon.h>
 #include <bcrypt.h>
 
-#define BACKOFF_MAX_MS  (5u * 60u * 1000u)  /* 5 min */
+#define BACKOFF_MAX_MS  (5u * 60u * 1000u)
 
 DWORD WINAPI beacon_loop(LPVOID lpParam) {
     (void)lpParam;

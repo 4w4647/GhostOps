@@ -8,7 +8,6 @@
 int WINAPI WinMain(HINSTANCE h, HINSTANCE p, LPSTR cmd, int show) {
     (void)h; (void)p; (void)cmd; (void)show;
 
-    /* resolve beacon.dll relative to this executable */
     char path[MAX_PATH];
     GetModuleFileNameA(NULL, path, MAX_PATH);
     char *sep = strrchr(path, '\\');

