@@ -1,10 +1,4 @@
-```
-┏┓┓     ┏┓
-┃┓┣┓┏┓┏╋┃┃┏┓┏
-┗┛┛┗┗┛┛┗┗┛┣┛┛
-          ┛
-  A lightweight C2 framework for authorized red team engagements.
-```
+# GhostOps - Command and Control Framework
 
 > **Legal** — For authorized security assessments and educational research only.
 > Use against systems without explicit written permission is illegal.
