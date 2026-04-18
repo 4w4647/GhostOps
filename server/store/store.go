@@ -3,6 +3,8 @@ package store
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
+	"os"
 	"sync"
 	"time"
 )
@@ -62,6 +64,12 @@ type Store struct {
 	beacons map[uint32]*BeaconInfo
 	pending map[uint32][]*Task
 	results map[uint32][]*TaskResult
+	path    string
+}
+
+type persistedState struct {
+	Beacons map[uint32]*BeaconInfo   `json:"beacons"`
+	Results map[uint32][]*TaskResult `json:"results"`
 }
 
 func New() *Store {
@@ -70,6 +78,46 @@ func New() *Store {
 		pending: make(map[uint32][]*Task),
 		results: make(map[uint32][]*TaskResult),
 	}
+}
+
+func Load(path string) (*Store, error) {
+	s := New()
+	s.path = path
+
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return s, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var state persistedState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return nil, err
+	}
+	if state.Beacons != nil {
+		s.beacons = state.Beacons
+	}
+	if state.Results != nil {
+		s.results = state.Results
+	}
+	return s, nil
+}
+
+func (s *Store) save() {
+	if s.path == "" {
+		return
+	}
+	state := persistedState{
+		Beacons: s.beacons,
+		Results: s.results,
+	}
+	data, err := json.Marshal(state)
+	if err != nil {
+		return
+	}
+	os.WriteFile(s.path, data, 0600)
 }
 
 func newTaskID() string {
@@ -87,6 +135,7 @@ func (s *Store) Upsert(b *BeaconInfo) {
 		b.FirstSeen = b.LastSeen
 	}
 	s.beacons[b.BeaconID] = b
+	s.save()
 }
 
 func (s *Store) List() []*BeaconInfo {
@@ -131,6 +180,7 @@ func (s *Store) SubmitResult(r *TaskResult) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.results[r.BeaconID] = append(s.results[r.BeaconID], r)
+	s.save()
 }
 
 func (s *Store) GetResults(beaconID uint32) []*TaskResult {

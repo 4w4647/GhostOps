@@ -96,8 +96,9 @@ func main() {
 	opPort  := flag.Int("op-port",     9090,         "Operator API port")
 	certFile := flag.String("tls-cert", "",          "TLS certificate PEM (auto-generated if omitted)")
 	keyFile  := flag.String("tls-key",  "",          "TLS private key PEM (auto-generated if omitted)")
-	apiKey   := flag.String("api-key",  "",          "Operator API key (auto-generated if omitted)")
-	logFile  := flag.String("log",      "",          "log file path (tee stdout + file)")
+	apiKey    := flag.String("api-key",  "",          "Operator API key (auto-generated if omitted)")
+	logFile   := flag.String("log",     "",          "log file path (tee stdout + file)")
+	storeFile := flag.String("store",   "",          "path to persistence file (disabled if omitted)")
 	flag.Parse()
 
 	if *apiKey == "" {
@@ -126,7 +127,16 @@ func main() {
 	c2Addr := fmt.Sprintf("%s:%d", *c2Host, *c2Port)
 	opAddr := fmt.Sprintf("%s:%d", *opHost, *opPort)
 
-	s  := store.New()
+	var s *store.Store
+	if *storeFile != "" {
+		s, err = store.Load(*storeFile)
+		if err != nil {
+			logger.Fatalf("[!] failed to load store: %v", err)
+		}
+		logger.Printf("[*] store loaded from %s", *storeFile)
+	} else {
+		s = store.New()
+	}
 	c2 := &handlers.C2{Store: s, Log: logger}
 	op := &handlers.Operator{Store: s, Log: logger}
 

