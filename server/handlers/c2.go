@@ -11,6 +11,43 @@ import (
 	"github.com/4w4647/GhostOps/server/store"
 )
 
+func shortOS(build uint32) string {
+	switch {
+	case build >= 26100:
+		return "Win11 24H2"
+	case build >= 22631:
+		return "Win11 23H2"
+	case build >= 22621:
+		return "Win11 22H2"
+	case build >= 22000:
+		return "Win11 21H2"
+	case build >= 20348:
+		return "Server 2022"
+	case build >= 19045:
+		return "Win10 22H2"
+	case build >= 19044:
+		return "Win10 21H2"
+	case build >= 19043:
+		return "Win10 21H1"
+	case build >= 19042:
+		return "Win10 20H2"
+	case build >= 19041:
+		return "Win10 2004"
+	case build >= 17763:
+		return "Win10 1809"
+	case build >= 14393:
+		return "Win10 1607"
+	case build >= 10240:
+		return "Win10"
+	case build >= 9600:
+		return "Win8.1"
+	case build >= 7601:
+		return "Win7 SP1"
+	default:
+		return "Windows"
+	}
+}
+
 type C2 struct {
 	Store *store.Store
 	Log   *log.Logger
@@ -47,11 +84,12 @@ func (h *C2) Checkin(w http.ResponseWriter, r *http.Request) {
 	}
 	elevated := ""
 	if info.IsElevated {
-		elevated = " (elevated)"
+		elevated = " *elevated*"
 	}
-	h.log().Printf("[C2] check-in  id=%-12d  %s\\%s @ %s%s  %s  %s  pid=%-6d  %s  eip=%s",
-		info.BeaconID, info.Domain, info.Username, info.Hostname, elevated,
-		info.OsVersion, info.Arch, info.PID, integ, info.EIP)
+	h.log().Printf("[C2] check-in  %s (%d)  %s\\%s%s  %s  %s  %s  %s",
+		info.Hostname, info.BeaconID,
+		info.Domain, info.Username, elevated,
+		shortOS(info.OsBuild), info.Arch, integ, info.EIP)
 	w.WriteHeader(http.StatusOK)
 }
 
