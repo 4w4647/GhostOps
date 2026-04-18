@@ -55,6 +55,7 @@ func (r *REPL) cmdBeacons() {
 		fmt.Printf("%s[*]%s no beacons\n", display.Yellow, display.Reset)
 		return
 	}
+	r.markSeen(beacons)
 
 	headers := []string{"ID", "USER", "HOSTNAME", "PID", "PROCESS", "ARCH", "INTEGRITY", "EXTERNAL IP", "LAST SEEN", "OS", "STATUS"}
 

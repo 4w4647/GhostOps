@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/4w4647/GhostOps/client/internal/banner"
 	"github.com/4w4647/GhostOps/client/internal/display"
@@ -16,12 +18,14 @@ import (
 )
 
 type REPL struct {
-	Server     string
-	APIKey     string
-	Active     *models.BeaconInfo
-	client     *http.Client
-	scanner    *bufio.Scanner
-	taskCursor map[uint32]int
+	Server      string
+	APIKey      string
+	Active      *models.BeaconInfo
+	client      *http.Client
+	scanner     *bufio.Scanner
+	taskCursor  map[uint32]int
+	seenBeacons map[uint32]bool
+	seenMu      sync.Mutex
 }
 
 func New(server, apiKey string) *REPL {
@@ -33,8 +37,9 @@ func New(server, apiKey string) *REPL {
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			},
 		},
-		scanner:    bufio.NewScanner(os.Stdin),
-		taskCursor: make(map[uint32]int),
+		scanner:     bufio.NewScanner(os.Stdin),
+		taskCursor:  make(map[uint32]int),
+		seenBeacons: make(map[uint32]bool),
 	}
 }
 
@@ -98,9 +103,48 @@ func (r *REPL) Post(path string, body interface{}, out interface{}) error {
 	return nil
 }
 
+func (r *REPL) markSeen(beacons []models.BeaconInfo) {
+	r.seenMu.Lock()
+	defer r.seenMu.Unlock()
+	for _, b := range beacons {
+		r.seenBeacons[b.BeaconID] = true
+	}
+}
+
+func (r *REPL) watchBeacons() {
+	for {
+		time.Sleep(5 * time.Second)
+		var beacons []models.BeaconInfo
+		if err := r.Fetch("/beacons", &beacons); err != nil {
+			continue
+		}
+		r.seenMu.Lock()
+		for _, b := range beacons {
+			if !r.seenBeacons[b.BeaconID] {
+				r.seenBeacons[b.BeaconID] = true
+				elevated := ""
+				if b.IsElevated {
+					elevated = display.Yellow + " *elevated*" + display.Reset
+				}
+				fmt.Printf("\r\033[K%s[+]%s new beacon: %s%s%s (%d)  %s\\%s%s  %s  %s  %s  %s\n",
+					display.Green, display.Reset,
+					display.Bold, b.Hostname, display.Reset,
+					b.BeaconID,
+					b.Domain, b.Username, elevated,
+					display.ShortOS(b.OsBuild), b.Arch,
+					display.IntegrityText(b.IntegrityLevel),
+					b.EIP)
+				fmt.Print(r.prompt())
+			}
+		}
+		r.seenMu.Unlock()
+	}
+}
+
 func (r *REPL) Run() {
 	banner.Print()
 	cmdHelp()
+	go r.watchBeacons()
 
 	for {
 		fmt.Print(r.prompt())
