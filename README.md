@@ -239,4 +239,4 @@ GhostOps Community is intentionally scoped. The following are not implemented:
 - BOF (Beacon Object File) support
 
 Detection by a mature EDR on a monitored network should be expected.
-Advanced capabilities are available in **GhostOps Pro**.
+Advanced capabilities are available in **GhostOps Professional**.
